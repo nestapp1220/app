@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en"> <!-- Default language, will be updated by JS -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="appTitle">Nest py</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.33.0/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
+    <!-- Google API Client Library (for future Google Drive integration) -->
+    <!-- <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script> -->
+    <style>
+        body, html {
+            margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            height: 100%; overflow: hidden;
+            color: #333;
+        }
+        .screen { display: none; width: 100%; height: 100%; box-sizing: border-box; }
+
+        /* --- Start Screen Styling --- */
+        #startScreen {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 20px; background: linear-gradient(135deg, #6e8efb, #a777e3);
+            color: white; text-align: center;
+        }
+        #startScreen .start-container {
+            background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(12px) saturate(150%);
+            -webkit-backdrop-filter: blur(12px) saturate(150%);
+            border-radius: 12px; border: 1px solid rgba(209, 213, 219, 0.3);
+            padding: 30px; margin-bottom: 30px; box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
+            width: 90%; max-width: 600px;
+        }
+        #startScreen h1 { font-size: 3em; margin-bottom: 10px; font-weight: 600; letter-spacing: -1px; }
+        #startScreen p.subtitle { font-size: 1.1em; margin-bottom: 30px; color: rgba(255,255,255,0.85); }
+        #startScreen input[type="text"] {
+            padding: 12px 15px; font-size: 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.2); color: white; margin-right: 10px;
+            width: calc(70% - 20px); box-sizing: border-box;
+        }
+        #startScreen input[type="text"]::placeholder { color: rgba(255,255,255,0.6); }
+        #startScreen button {
+            padding: 12px 20px; font-size: 16px; border-radius: 8px; border: none;
+            background-color: #ffffff; color: #6e8efb; cursor: pointer; font-weight: 500;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+        #startScreen button#googleDriveConnectBtnPlaceholder {
+            background-color: #4CAF50; color: white; margin-top: 15px;
+        }
+        #startScreen button:hover { background-color: #f0f0f0; }
+        #startScreen button:active { transform: scale(0.98); }
+        #startScreen .project-list-container { width: 100%; }
+        #startScreen .project-list-container h2 { font-size: 1.8em; margin-bottom: 20px; font-weight: 500; }
+        #projectList { max-height: 300px; overflow-y: auto; padding-right: 10px; }
+        #projectList .project-item {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(255, 255, 255, 0.2); padding: 15px; border-radius: 8px; margin-bottom: 10px;
+            transition: background-color 0.2s ease, transform 0.2s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        #projectList .project-item:hover { background: rgba(255, 255, 255, 0.3); transform: translateY(-2px); }
+        #projectList .project-item span { font-size: 1.1em; font-weight: 500; }
+        #projectList .project-item button {
+            font-size: 13px; padding: 6px 12px; margin-left: 8px;
+            background-color: rgba(255,255,255,0.7); color: #555;
+        }
+        #projectList .project-item button:hover { background-color: rgba(255,255,255,1); }
+        #projectList .project-item button.delete-project { background-color: rgba(255,100,100,0.6); color: white;}
+        #projectList .project-item button.delete-project:hover { background-color: rgba(255,80,80,0.8); }
+        #projectList::-webkit-scrollbar { width: 8px; }
+        #projectList::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        #projectList::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.4); border-radius: 10px; }
+        #projectList::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.6); }
+
+        /* --- Coding Screen Styling --- */
+        #codingScreen { display: none; flex-direction: column; height: 100%; background-color: #1e1e1e; }
+        .toolbar {
+            background-color: #252526; padding: 8px 10px; color: white;
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap; /* Default flex-wrap for desktop */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10;
+            position: relative; /* For mobile menu positioning */
+        }
+        .toolbar-item-group { /* Wrapper for items to hide/show on mobile as a group */
+            display: flex; align-items: center; gap: 8px;
+        }
+        .toolbar button, .toolbar input[type="text"], .toolbar label, .toolbar select, .toolbar .icon-button {
+            font-size: 14px; padding: 6px 12px; background-color: #3c3c3c; color: white;
+            border: none; border-radius: 4px; cursor: pointer; margin: 2px;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .toolbar .icon-button { padding: 6px 8px; }
+        .toolbar .icon-button svg { width: 18px; height: 18px; fill: white; }
+        .toolbar input[type="text"]{ padding: 7px 10px; cursor: text; }
+        .toolbar button:hover, .toolbar select:hover, .toolbar .icon-button:hover { background-color: #5a5a5a; }
+        .toolbar .project-name-display { font-weight: bold; margin-right: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; flex-shrink: 1;}
+        .toolbar .spacer { flex-grow: 1; } /* Pushes items to sides */
+
+        #hamburgerMenuBtn { display: none; } /* Hidden by default, shown on mobile */
+        #mobileMenu {
+            display: none; position: absolute;
+            top: calc(100% + 5px); /* Below toolbar with a small gap */
+            right: 10px;
+            background-color: #2c2c2c; border: 1px solid #444;
+            border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 20; padding: 5px 0; min-width: 200px;
+        }
+        #mobileMenu.active { display: block; }
+        #mobileMenu button {
+            display: flex; align-items: center; gap: 8px; /* For icon + text */
+            width: 100%; text-align: left;
+            padding: 10px 15px; background-color: transparent; color: white;
+            border: none; border-radius: 0; font-size: 14px; box-sizing: border-box;
+        }
+        #mobileMenu button:hover { background-color: #3c3c3c; }
+        #mobileMenu .collaboration-status-mobile { padding: 10px 15px; font-size: 12px; border-top: 1px solid #444; }
+        #mobileMenu .collaboration-status-mobile > span { display: block; margin-bottom: 5px; }
+        #mobileMenu .collaboration-status-mobile input[type="text"] { width: calc(100% - 22px); margin-bottom: 5px; box-sizing: border-box;}
+        #mobileMenu .collaboration-status-mobile button { width: 100%; margin-top: 5px; justify-content: center; }
+
+        .main-content { display: flex; flex-grow: 1; overflow: hidden; }
+        #editor-container { flex: 2; position: relative; height: 100%; }
+        #editor { width: 100%; height: 100%; font-size: 16px; }
+        .sidebar {
+            flex: 1; display: flex; flex-direction: column; background-color: #1e1e1e;
+            color: white; padding: 10px; overflow-y: auto;
+            border-left: 1px solid #333; min-width: 280px;
+        }
+        .sidebar-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 5px;
+        }
+        .sidebar-header h3 { margin: 0; border-bottom: none; padding-bottom: 0; }
+        #consoleRunBtnMobile { display: none; /* Shown on mobile in .sidebar-header */ }
+
+        .sidebar h3, .sidebar h4 { margin-top: 10px; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        #image-preview-original, #image-preview-processed {
+            max-width: 100%; margin-top: 10px; border: 1px solid #444;
+            background-color: #2d2d2d; min-height: 100px; display: block; object-fit: contain;
+        }
+        #output-console {
+            background-color: #1e1e1e; color: #ccc; padding: 10px;
+            font-family: monospace; white-space: pre-wrap; word-wrap: break-word;
+            overflow-y: auto; height: 150px; border-top: 1px solid #333; flex-shrink: 0;
+        }
+
+        /* --- Mobile Specific Layout for Coding Screen --- */
+        @media (max-width: 768px) {
+            .toolbar { padding: 8px 10px; gap: 6px; flex-wrap: nowrap; justify-content: space-between; }
+            .toolbar .project-name-display { max-width: calc(100vw - 200px); /* Adjust based on other fixed items */ margin-left: 0; }
+            .toolbar-item-group.desktop-only { display: none; }
+            #hamburgerMenuBtn { display: inline-flex; }
+            #runCodeBtn { display: none; } /* Hide main run button on toolbar for mobile */
+
+            .main-content { flex-direction: column; }
+            #editor-container {
+                flex: 1 1 60%; border-right: none;
+                border-bottom: 1px solid #333; min-height: 200px;
+            }
+            .sidebar {
+                flex: 1 1 40%; border-left: none;
+                min-width: 0; max-height: 45vh;
+            }
+            .sidebar h3, .sidebar h4 { font-size: 0.95em; }
+            #image-preview-original, #image-preview-processed { max-height: 150px; }
+            #output-console { height: 120px; }
+            #consoleRunBtnMobile { display: inline-flex; }
+            #consoleHeaderString { flex-grow: 1; }
+        }
+        @media (max-width: 480px) { /* Even smaller screens */
+            #startScreen h1 { font-size: 2.2em; }
+            #startScreen p.subtitle { font-size: 1em; }
+            #startScreen input[type="text"] { width: 100%; margin-right: 0; margin-bottom: 10px; }
+            #startScreen button { width: 100%; }
+
+            .toolbar .project-name-display { display: none; } /* Further hide for more space */
+            #languageSelector { font-size: 12px; padding: 5px 6px;} /* Smaller lang selector */
+        }
+
+        /* --- Loader Styling --- */
+        #loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.8); color: white;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 20px; z-index: 9999; text-align: center;
+        }
+        #loader-package-status { font-size: 0.8em; margin-top: 10px; color: #aaa; }
+
+        /* --- Collaboration Status Styling --- */
+        .collaboration-status { display: flex; align-items: center; gap: 5px; font-size: 12px; flex-wrap: wrap; }
+        @media (max-width: 768px) {
+            .collaboration-status { display: none; } /* Moved to mobile menu */
+            #connStatus.desktop-only { display: none; } /* Hide desktop status span */
+        }
+
+        /* --- Share Modal Styling --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.6); display: none;
+            align-items: center; justify-content: center; z-index: 10000;
+        }
+        .modal-content {
+            background-color: #2d2d2d; color: white; padding: 25px 30px; border-radius: 8px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.3); width: 90%; max-width: 500px; text-align: left;
+        }
+        .modal-content h3 { margin-top: 0; margin-bottom: 15px; font-size: 1.4em;}
+        .modal-content p { margin-bottom: 10px; font-size: 0.95em; color: #ccc; }
+        .modal-url-input {
+            width: calc(100% - 22px); padding: 10px; margin-bottom: 15px;
+            border: 1px solid #555; background-color: #1e1e1e; color: white;
+            border-radius: 4px; font-family: monospace; font-size: 0.9em; box-sizing: border-box;
+        }
+        .modal-buttons { text-align: right; }
+        .modal-buttons button {
+            padding: 8px 15px; font-size: 14px; border-radius: 4px;
+            border: none; cursor: pointer; margin-left: 10px;
+            background-color: #4a90e2; color: white;
+        }
+        .modal-buttons button.modal-close-btn { background-color: #666; }
+        .modal-buttons button:hover { opacity: 0.9; }
+    </style>
+</head>
+<body>
+
+    <div id="loader">
+        <span data-translate-key="loadingPyodide">Initializing Pyodide... Please wait.</span>
+        <span id="loader-package-status"></span>
+    </div>
+
+    <div id="startScreen" class="screen">
+        <div class="start-container">
+            <h1 data-translate-key="appStartTitle">Nest py</h1>
+            <p class="subtitle" data-translate-key="appSubtitle">Your lightweight, shareable Python coding environment.</p>
+            <div>
+                <input type="text" id="newProjectName" data-translate-placeholder-key="newProjectPlaceholder">
+                <button id="createProjectBtn" data-translate-key="createProjectButton">Create</button>
+            </div>
+            <button id="googleDriveConnectBtnPlaceholder" data-translate-key="connectGoogleDrive" title="Future Feature">Connect to Google Drive</button>
+        </div>
+        <div class="start-container project-list-container">
+            <h2 data-translate-key="existingProjectsHeader">Existing Projects</h2>
+            <div id="projectList"></div>
+        </div>
+    </div>
+
+    <div id="codingScreen" class="screen">
+        <div class="toolbar">
+            <button id="backToStartBtn" class="icon-button" data-translate-title-key="backToStartButton">
+                <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            </button>
+            <select id="languageSelector" data-translate-title-key="selectLanguageTitle">
+                <option value="en">English</option>
+                <option value="ja">日本語</option>
+                <option value="zh">中文 (简体)</option>
+                <option value="ko">한국어</option>
+            </select>
+            <span class="project-name-display" id="currentProjectNameDisplay"></span>
+            <div class="spacer desktop-only"></div> <!-- Pushes desktop items to right -->
+
+            <div class="toolbar-item-group desktop-only">
+                <button id="saveProjectBtn" data-translate-key="saveProjectButton">Save</button>
+                <button id="runCodeBtn" data-translate-key="runCodeButton">Run</button>
+                <button id="googleDriveToolbarBtnPlaceholder" data-translate-key="googleDriveOptions" title="Future Feature">GDrive</button>
+            </div>
+            <div class="toolbar-item-group desktop-only collaboration-status">
+                <span data-translate-key="myPeerIdLabel">ID:</span> <span id="myPeerId">N/A</span>
+                <input type="text" id="connectPeerId" data-translate-placeholder-key="connectPeerIdPlaceholder" size="10">
+                <button id="connectToPeerBtn" data-translate-key="connectButton">Connect</button>
+                <button id="startSharingBtn" data-translate-key="startSharingButton">Share</button>
+            </div>
+             <span id="connStatus" class="desktop-only" style="font-size: 12px; min-width: 100px; text-align: right;"></span>
+
+            <button id="hamburgerMenuBtn" class="icon-button" data-translate-title-key="menuTitle">
+                <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+            </button>
+            <div id="mobileMenu">
+                <button id="mobileSaveProjectBtn" data-translate-key="saveProjectButton">
+                    <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right:8px;fill:currentColor;"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+                    Save Project
+                </button>
+                <button id="mobileRunCodeBtn" data-translate-key="runCodeButton">
+                     <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right:8px;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg>
+                    Run Code
+                </button>
+                <button id="mobileStartSharingBtn" data-translate-key="startSharingButton">
+                    <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right:8px;fill:currentColor;"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg>
+                    Share Session
+                </button>
+                <div class="collaboration-status-mobile">
+                    <span><span data-translate-key="myPeerIdLabel">Your ID:</span> <span id="mobileMyPeerId">N/A</span></span>
+                    <input type="text" id="mobileConnectPeerId" data-translate-placeholder-key="connectPeerIdPlaceholder">
+                    <button id="mobileConnectToPeerBtn" data-translate-key="connectButton">Connect to Peer</button>
+                </div>
+                 <span id="mobileConnStatus" style="font-size: 12px; padding: 5px 15px; display: block; color: #ccc; text-align: center;"></span>
+                <button id="mobileGoogleDriveBtnPlaceholder" data-translate-key="googleDriveOptions" title="Future Feature">
+                    <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right:8px;fill:currentColor;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                    Google Drive
+                </button>
+            </div>
+        </div>
+        <div class="main-content">
+            <div id="editor-container"><div id="editor"></div></div>
+            <div class="sidebar">
+                <h3 data-translate-key="imageProcessingHeader">Image Processing</h3>
+                <label for="imageUpload" data-translate-key="imageUploadLabel">Upload Image:</label>
+                <input type="file" id="imageUpload" accept="image/*">
+                <h4 data-translate-key="originalImageHeader">Original Image:</h4>
+                <img id="image-preview-original" src="#" alt="Original Image" style="display:none;">
+                <h4 data-translate-key="processedImageHeader">Processed Image:</h4>
+                <img id="image-preview-processed" src="#" alt="Processed Image" style="display:none;">
+
+                <div class="sidebar-header">
+                    <h3 id="consoleHeaderString" data-translate-key="consoleOutputHeader">Console Output</h3>
+                    <button id="consoleRunBtnMobile" class="icon-button" data-translate-title-key="runCodeButton">
+                        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    </button>
+                </div>
+                <div id="output-console"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="shareModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 data-translate-key="shareSessionTitle">Share Collaboration Session</h3>
+            <p data-translate-key="shareSessionInstructions">Send this URL to others to invite them to this session:</p>
+            <input type="text" id="shareableUrl" class="modal-url-input" readonly>
+            <div class="modal-buttons">
+                <button id="copyUrlBtn" data-translate-key="copyUrlButton">Copy URL</button>
+                <button id="closeShareModalBtn" class="modal-close-btn" data-translate-key="closeButton">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- I18N (Internationalization) ---
+        const translations = {
+            en: {
+                appTitle: "Nest py", appStartTitle: "Nest py", appSubtitle: "Your lightweight, shareable Python coding environment.",
+                loadingPyodide: "Initializing Pyodide... Please wait.", loadingPackages: "Loading Python packages (Pillow)...", pyodideReady: "Pyodide ready!",
+                newProjectPlaceholder: "New Project Name", createProjectButton: "Create", existingProjectsHeader: "Existing Projects",
+                noProjects: "No projects yet. Create one!", openButton: "Open", deleteButton: "Delete",
+                backToStartButton: "Back to Start", saveProjectButton: "Save", runCodeButton: "Run",
+                myPeerIdLabel: "ID:", connectPeerIdPlaceholder: "Host Peer ID", connectButton: "Connect", startSharingButton: "Share",
+                imageProcessingHeader: "Image Processing", imageUploadLabel: "Upload Image:",
+                originalImageHeader: "Original Image", processedImageHeader: "Processed Image", consoleOutputHeader: "Console Output",
+                alertProjectNameEmpty: "Project name cannot be empty.", alertProjectExists: "Project with this name already exists.",
+                alertProjectSaved: "Project \"{projectName}\" saved!", alertDeleteConfirm: "Are you sure you want to delete project \"{projectName}\"?",
+                alertPyodideNotReady: "Pyodide is not ready yet.", alertPeerJSNotInitialized: "PeerJS not initialized. Cannot perform action.",
+                alertEnterHostPeerId: "Please enter a Host Peer ID.", alertCannotConnectToSelf: "You cannot connect to yourself.",
+                statusConnectingTo: "Connecting to {peerId}...", statusConnectedTo: "Connected to {peerId}",
+                statusConnectionClosed: "Connection to {peerId} closed.", statusIncomingConnection: "Incoming from {peerId}",
+                statusSharing: "Sharing (ID: {peerId}). Waiting...", statusError: "Error: {errorType}",
+                statusPeerNotFound: "Host {peerId} not found.", statusDisconnected: "PeerJS disconnected. Reconnecting...",
+                statusPeerConnectionClosed: "Peer connection closed.", statusRunningCode: "Running code...",
+                statusImageProcessed: "Image processed and displayed.", statusJsErrorPyodide: "JS error during Pyodide: {error}",
+                statusWelcomeToProject: "# Welcome to {projectName}\nprint(\"Hello from {projectName}!\")",
+                projectNamePrefix: "Project: ", errorPrefix: "Error: ",
+                shareSessionTitle: "Share Collaboration Session", shareSessionInstructions: "Send this URL to invite others:",
+                copyUrlButton: "Copy URL", urlCopied: "Copied!", closeButton: "Close",
+                autoConnectingTo: "URL Share: Connecting to {peerId}...",
+                menuTitle: "Menu", selectLanguageTitle: "Select Language",
+                connectGoogleDrive: "Connect to Google Drive", googleDriveOptions: "Google Drive",
+                googleDriveNotImplemented: "Google Drive integration is not yet implemented."
+            },
+            ja: { // Japanese translations - ensure all keys match 'en'
+                appTitle: "Nest py (ネストパイ)", appStartTitle: "Nest py", appSubtitle: "軽量で共有可能なPythonコーディング環境",
+                loadingPyodide: "Pyodideを初期化中...", loadingPackages: "Pythonパッケージ (Pillow) を読込中...", pyodideReady: "Pyodide準備完了!",
+                newProjectPlaceholder: "新規プロジェクト名", createProjectButton: "作成", existingProjectsHeader: "既存のプロジェクト",
+                noProjects: "プロジェクトがありません。", openButton: "開く", deleteButton: "削除",
+                backToStartButton: "スタートに戻る", saveProjectButton: "保存", runCodeButton: "実行",
+                myPeerIdLabel: "ID:", connectPeerIdPlaceholder: "ホストPeer ID", connectButton: "接続", startSharingButton: "共有",
+                imageProcessingHeader: "画像処理", imageUploadLabel: "画像アップロード:",
+                originalImageHeader: "元の画像", processedImageHeader: "加工後の画像", consoleOutputHeader: "コンソール出力",
+                alertProjectNameEmpty: "プロジェクト名は必須です。", alertProjectExists: "同名のプロジェクトが存在します。",
+                alertProjectSaved: "「{projectName}」を保存しました！", alertDeleteConfirm: "「{projectName}」を削除しますか？",
+                alertPyodideNotReady: "Pyodide未準備です。", alertPeerJSNotInitialized: "PeerJS未初期化です。",
+                alertEnterHostPeerId: "ホストPeer IDを入力下さい。", alertCannotConnectToSelf: "自身には接続できません。",
+                statusConnectingTo: "{peerId}へ接続中...", statusConnectedTo: "{peerId}へ接続済",
+                statusConnectionClosed: "{peerId}との接続が切れました。", statusIncomingConnection: "{peerId}から接続",
+                statusSharing: "共有中 (ID: {peerId})。待機中...", statusError: "エラー: {errorType}",
+                statusPeerNotFound: "ホスト {peerId} が見つかりません。", statusDisconnected: "PeerJS切断。再接続中...",
+                statusPeerConnectionClosed: "ピア接続が閉じました。", statusRunningCode: "コード実行中...",
+                statusImageProcessed: "画像処理・表示完了。", statusJsErrorPyodide: "Pyodide中のJSエラー: {error}",
+                statusWelcomeToProject: "# {projectName} へようこそ\nprint(\"{projectName}よりこんにちは！\")",
+                projectNamePrefix: "プロジェクト: ", errorPrefix: "エラー: ",
+                shareSessionTitle: "共同編集セッションを共有", shareSessionInstructions: "このURLを招待者に送信:",
+                copyUrlButton: "URLコピー", urlCopied: "コピー済!", closeButton: "閉じる",
+                autoConnectingTo: "URL共有: {peerId}へ接続試行中...",
+                menuTitle: "メニュー", selectLanguageTitle: "言語選択",
+                connectGoogleDrive: "Googleドライブに接続", googleDriveOptions: "Googleドライブ",
+                googleDriveNotImplemented: "Googleドライブ連携は未実装です。"
+            },
+            zh: { // Simplified Chinese translations - ensure all keys match 'en'
+                appTitle: "Nest py (代码小巢)", appStartTitle: "Nest py", appSubtitle: "轻量级、可共享的Python编码环境",
+                loadingPyodide: "Pyodide 初始化中...", loadingPackages: "加载Python包(Pillow)...", pyodideReady: "Pyodide准备就绪!",
+                newProjectPlaceholder: "新项目名称", createProjectButton: "创建", existingProjectsHeader: "现有项目",
+                noProjects: "暂无项目。", openButton: "打开", deleteButton: "删除",
+                backToStartButton: "返回开始", saveProjectButton: "保存", runCodeButton: "运行",
+                myPeerIdLabel: "ID:", connectPeerIdPlaceholder: "主机Peer ID", connectButton: "连接", startSharingButton: "共享",
+                imageProcessingHeader: "图像处理", imageUploadLabel: "上传图片:",
+                originalImageHeader: "原始图片", processedImageHeader: "处理后图片", consoleOutputHeader: "控制台输出",
+                alertProjectNameEmpty: "项目名称不能为空。", alertProjectExists: "同名项目已存在。",
+                alertProjectSaved: "项目“{projectName}”已保存！", alertDeleteConfirm: "确定删除项目“{projectName}”吗？",
+                alertPyodideNotReady: "Pyodide尚未就绪。", alertPeerJSNotInitialized: "PeerJS尚未初始化。",
+                alertEnterHostPeerId: "请输入主机Peer ID。", alertCannotConnectToSelf: "不能连接到自己。",
+                statusConnectingTo: "正在连接到 {peerId}...", statusConnectedTo: "已连接到 {peerId}",
+                statusConnectionClosed: "与 {peerId} 的连接已关闭。", statusIncomingConnection: "来自 {peerId} 的连接",
+                statusSharing: "共享中 (ID: {peerId})。等待连接...", statusError: "错误: {errorType}",
+                statusPeerNotFound: "未找到主机 {peerId}。", statusDisconnected: "PeerJS 已断开。尝试重连...",
+                statusPeerConnectionClosed: "对等连接已关闭。", statusRunningCode: "代码运行中...",
+                statusImageProcessed: "图片已处理并显示。", statusJsErrorPyodide: "Pyodide中JS错误: {error}",
+                statusWelcomeToProject: "# 欢迎来到 {projectName}\nprint(\"来自 {projectName} 的问候!\")",
+                projectNamePrefix: "项目: ", errorPrefix: "错误: ",
+                shareSessionTitle: "共享协作会话", shareSessionInstructions: "发送此URL邀请他人:",
+                copyUrlButton: "复制URL", urlCopied: "已复制!", closeButton: "关闭",
+                autoConnectingTo: "URL共享: 尝试连接到 {peerId}...",
+                menuTitle: "菜单", selectLanguageTitle: "选择语言",
+                connectGoogleDrive: "连接到Google云端硬盘", googleDriveOptions: "Google云端硬盘",
+                googleDriveNotImplemented: "Google云端硬盘集成尚未实现。"
+            },
+            ko: { // Korean translations - ensure all keys match 'en'
+                appTitle: "Nest py (둥지 파이)", appStartTitle: "Nest py", appSubtitle: "가볍고 공유 가능한 Python 코딩 환경",
+                loadingPyodide: "Pyodide 초기화 중...", loadingPackages: "Python 패키지(Pillow) 로드 중...", pyodideReady: "Pyodide 준비 완료!",
+                newProjectPlaceholder: "새 프로젝트 이름", createProjectButton: "만들기", existingProjectsHeader: "기존 프로젝트",
+                noProjects: "프로젝트가 없습니다.", openButton: "열기", deleteButton: "삭제",
+                backToStartButton: "시작으로", saveProjectButton: "저장", runCodeButton: "실행",
+                myPeerIdLabel: "ID:", connectPeerIdPlaceholder: "호스트 Peer ID", connectButton: "연결", startSharingButton: "공유",
+                imageProcessingHeader: "이미지 처리", imageUploadLabel: "이미지 업로드:",
+                originalImageHeader: "원본 이미지", processedImageHeader: "처리된 이미지", consoleOutputHeader: "콘솔 출력",
+                alertProjectNameEmpty: "프로젝트 이름은 필수입니다.", alertProjectExists: "같은 이름의 프로젝트가 있습니다.",
+                alertProjectSaved: "\"{projectName}\" 저장됨!", alertDeleteConfirm: "\"{projectName}\"을(를) 삭제하시겠습니까?",
+                alertPyodideNotReady: "Pyodide 준비 안됨.", alertPeerJSNotInitialized: "PeerJS 초기화 안됨.",
+                alertEnterHostPeerId: "호스트 Peer ID를 입력하세요.", alertCannotConnectToSelf: "자신에게 연결할 수 없습니다.",
+                statusConnectingTo: "{peerId}에 연결 중...", statusConnectedTo: "{peerId}에 연결됨",
+                statusConnectionClosed: "{peerId}와 연결 끊김.", statusIncomingConnection: "{peerId}로부터 연결",
+                statusSharing: "공유 중 (ID: {peerId})。 대기 중...", statusError: "오류: {errorType}",
+                statusPeerNotFound: "호스트 {peerId} 없음.", statusDisconnected: "PeerJS 연결 끊김. 재연결 시도 중...",
+                statusPeerConnectionClosed: "피어 연결 닫힘.", statusRunningCode: "코드 실행 중...",
+                statusImageProcessed: "이미지 처리 및 표시 완료.", statusJsErrorPyodide: "Pyodide 중 JS 오류: {error}",
+                statusWelcomeToProject: "# {projectName}에 오신 것을 환영합니다\nprint(\"{projectName}에서 인사드립니다!\")",
+                projectNamePrefix: "프로젝트: ", errorPrefix: "오류: ",
+                shareSessionTitle: "공동 작업 세션 공유", shareSessionInstructions: "초대하려면 이 URL을 보내세요:",
+                copyUrlButton: "URL 복사", urlCopied: "복사됨!", closeButton: "닫기",
+                autoConnectingTo: "URL 공유: {peerId}에 연결 시도 중...",
+                menuTitle: "메뉴", selectLanguageTitle: "언어 선택",
+                connectGoogleDrive: "Google 드라이브에 연결", googleDriveOptions: "Google 드라이브",
+                googleDriveNotImplemented: "Google 드라이브 통합은 아직 구현되지 않았습니다."
+            }
+        };
+        let currentLanguage = 'en';
+
+        function _(key, replacements = {}) {
+            let langPack = translations[currentLanguage] || translations.en;
+            let translation = langPack[key] || translations.en[key] || key;
+            for (const placeholder in replacements) {
+                translation = translation.replace(`{${placeholder}}`, replacements[placeholder]);
+            }
+            return translation;
+        }
+
+        function applyLanguage(lang) {
+            if (!translations[lang]) lang = 'en';
+            currentLanguage = lang;
+            localStorage.setItem('nestPyLanguage', lang);
+            document.documentElement.lang = lang;
+            document.querySelectorAll('[data-translate-key]').forEach(el => el.textContent = _(el.dataset.translateKey));
+            document.querySelectorAll('[data-translate-placeholder-key]').forEach(el => el.placeholder = _(el.dataset.translatePlaceholderKey));
+            document.querySelectorAll('[data-translate-title-key]').forEach(el => el.title = _(el.dataset.translateTitleKey));
+            document.getElementById('appTitle').textContent = _('appTitle');
+            loadProjectList();
+            if (currentProjectName) currentProjectNameDisplay.textContent = _('projectNamePrefix') + currentProjectName;
+            if (loader.style.display === 'flex' || loader.style.display === '') {
+                 loader.querySelector('span[data-translate-key="loadingPyodide"]').textContent = _('loadingPyodide');
+            }
+        }
+
+        const loader = document.getElementById('loader');
+        const loaderPackageStatus = document.getElementById('loader-package-status');
+        const startScreen = document.getElementById('startScreen');
+        const codingScreen = document.getElementById('codingScreen');
+        const newProjectNameInput = document.getElementById('newProjectName');
+        const createProjectBtn = document.getElementById('createProjectBtn');
+        const projectListDiv = document.getElementById('projectList');
+        const backToStartBtn = document.getElementById('backToStartBtn');
+        const currentProjectNameDisplay = document.getElementById('currentProjectNameDisplay');
+        const languageSelector = document.getElementById('languageSelector');
+        // Desktop buttons
+        const saveProjectBtn = document.getElementById('saveProjectBtn');
+        const runCodeBtn = document.getElementById('runCodeBtn');
+        const googleDriveToolbarBtnPlaceholder = document.getElementById('googleDriveToolbarBtnPlaceholder');
+        // Image & Console
+        const imageUploadInput = document.getElementById('imageUpload');
+        const originalImagePreview = document.getElementById('image-preview-original');
+        const processedImagePreview = document.getElementById('image-preview-processed');
+        const outputConsole = document.getElementById('output-console');
+        const consoleRunBtnMobile = document.getElementById('consoleRunBtnMobile');
+        // PeerJS Desktop
+        const myPeerIdSpan = document.getElementById('myPeerId');
+        const connectPeerIdInput = document.getElementById('connectPeerId');
+        const connectToPeerBtn = document.getElementById('connectToPeerBtn');
+        const startSharingBtn = document.getElementById('startSharingBtn');
+        const connStatusSpan = document.getElementById('connStatus');
+        // Share Modal
+        const shareModal = document.getElementById('shareModal');
+        const shareableUrlInput = document.getElementById('shareableUrl');
+        const copyUrlBtn = document.getElementById('copyUrlBtn');
+        const closeShareModalBtn = document.getElementById('closeShareModalBtn');
+        // Mobile Menu
+        const hamburgerMenuBtn = document.getElementById('hamburgerMenuBtn');
+        const mobileMenu = document.getElementById('mobileMenu');
+        const mobileSaveProjectBtn = document.getElementById('mobileSaveProjectBtn');
+        const mobileRunCodeBtn = document.getElementById('mobileRunCodeBtn');
+        const mobileStartSharingBtn = document.getElementById('mobileStartSharingBtn');
+        const mobileMyPeerIdSpan = document.getElementById('mobileMyPeerId');
+        const mobileConnectPeerIdInput = document.getElementById('mobileConnectPeerId');
+        const mobileConnectToPeerBtn = document.getElementById('mobileConnectToPeerBtn');
+        const mobileConnStatusSpan = document.getElementById('mobileConnStatus');
+        const mobileGoogleDriveBtnPlaceholder = document.getElementById('mobileGoogleDriveBtnPlaceholder');
+        // Google Drive Placeholder (Start Screen)
+        const googleDriveConnectBtnPlaceholder = document.getElementById('googleDriveConnectBtnPlaceholder');
+
+        let editor, pyodide, currentProjectName = null, originalImageDataBase64 = null;
+        let peer = null, currentConnection = null, hostConnections = [], isUpdatingFromPeer = false;
+
+        async function initPyodide() {
+            loader.style.display = 'flex';
+            loader.querySelector('span[data-translate-key="loadingPyodide"]').textContent = _('loadingPyodide');
+            loaderPackageStatus.textContent = '';
+            pyodide = await loadPyodide();
+            loaderPackageStatus.textContent = _('loadingPackages');
+            await pyodide.loadPackage("micropip");
+            const micropip = pyodide.pyimport("micropip");
+            await micropip.install('Pillow');
+            loader.querySelector('span[data-translate-key="loadingPyodide"]').textContent = _('pyodideReady');
+            loaderPackageStatus.textContent = '';
+            setTimeout(() => { loader.style.display = 'none'; }, 1000);
+            console.log("Pyodide and Pillow loaded.");
+        }
+
+        function setupEditor() {
+            editor = ace.edit("editor");
+            editor.setTheme("ace/theme/tomorrow_night_eighties");
+            editor.session.setMode("ace/mode/python");
+            editor.setOptions({ enableBasicAutocompletion: true, enableLiveAutocompletion: true, enableSnippets: true, showLineNumbers: true, tabSize: 4, useSoftTabs: true });
+            editor.session.on('change', () => {
+                if (!isUpdatingFromPeer) {
+                    const codeContent = editor.getValue();
+                    if (currentConnection && currentConnection.open) currentConnection.send({ type: 'code_update', content: codeContent });
+                    else if (hostConnections.length > 0) hostConnections.forEach(conn => { if (conn.open) conn.send({ type: 'code_update', content: codeContent }); });
+                }
+            });
+        }
+
+        function showStartScreen() {
+            startScreen.style.display = 'flex'; codingScreen.style.display = 'none';
+            mobileMenu.classList.remove('active'); loadProjectList();
+            currentProjectName = null; originalImageDataBase64 = null;
+            originalImagePreview.style.display = 'none'; originalImagePreview.src = "#";
+            processedImagePreview.style.display = 'none'; processedImagePreview.src = "#";
+            outputConsole.textContent = ""; if (editor) editor.setValue("", -1);
+            currentProjectNameDisplay.textContent = "";
+            if (window.location.hash.startsWith('#collab=')) history.pushState("", document.title, window.location.pathname + window.location.search);
+        }
+
+        function showCodingScreen(projectName) {
+            startScreen.style.display = 'none'; codingScreen.style.display = 'flex';
+            mobileMenu.classList.remove('active');
+            currentProjectName = projectName; currentProjectNameDisplay.textContent = _('projectNamePrefix') + projectName;
+            if (peer && peer.id) { myPeerIdSpan.textContent = peer.id; mobileMyPeerIdSpan.textContent = peer.id; }
+            if (peer && peer.id && window.location.hash.startsWith('#collab=')) {
+                const peerIdFromUrl = window.location.hash.substring('#collab='.length);
+                if (peerIdFromUrl && peerIdFromUrl !== peer.id && !(currentConnection && currentConnection.peer === peerIdFromUrl && currentConnection.open)) {
+                    updateConnectionStatus(_('autoConnectingTo', {peerId: peerIdFromUrl}));
+                    connectPeerIdInput.value = peerIdFromUrl; mobileConnectPeerIdInput.value = peerIdFromUrl;
+                    connectToPeer(peerIdFromUrl);
+                }
+            }
+            if(editor) editor.resize();
+        }
+
+        function getProjects() { return JSON.parse(localStorage.getItem('nestPy_projects') || '{}'); }
+        function saveProjects(projects) { localStorage.setItem('nestPy_projects', JSON.stringify(projects)); }
+        function loadProjectList() {
+            projectListDiv.innerHTML = ''; const projects = getProjects();
+            if (Object.keys(projects).length === 0) { projectListDiv.innerHTML = `<p style="color: rgba(255,255,255,0.7);">${_('noProjects')}</p>`; return; }
+            for (const name in projects) {
+                const item = document.createElement('div'); item.className = 'project-item';
+                item.innerHTML = `<span>${name}</span><div><button data-name="${name}" class="open-project">${_('openButton')}</button><button data-name="${name}" class="delete-project">${_('deleteButton')}</button></div>`;
+                projectListDiv.appendChild(item);
+            }
+            projectListDiv.querySelectorAll('.open-project').forEach(btn => btn.addEventListener('click', (e) => openProject(e.target.dataset.name)));
+            projectListDiv.querySelectorAll('.delete-project').forEach(btn => btn.addEventListener('click', (e) => deleteProject(e.target.dataset.name)));
+        }
+        createProjectBtn.addEventListener('click', () => {
+            const name = newProjectNameInput.value.trim(); if (!name) { alert(_('alertProjectNameEmpty')); return; }
+            const projects = getProjects(); if (projects[name]) { alert(_('alertProjectExists')); return; }
+            projects[name] = { code: _('statusWelcomeToProject', {projectName: name}), image: null };
+            saveProjects(projects); newProjectNameInput.value = ''; openProject(name);
+        });
+        function openProject(name) {
+            const projects = getProjects();
+            if (projects[name]) {
+                currentProjectName = name; editor.setValue(projects[name].code || '', -1);
+                originalImageDataBase64 = null; originalImagePreview.style.display = 'none'; processedImagePreview.style.display = 'none';
+                showCodingScreen(name);
+            } else { showStartScreen(); }
+        }
+        function doSaveProject() { // Renamed to avoid conflict if button ID matches function name
+            if (!currentProjectName) return; const projects = getProjects();
+            projects[currentProjectName] = { code: editor.getValue() }; saveProjects(projects);
+            alert(_('alertProjectSaved', {projectName: currentProjectName}));
+        }
+        saveProjectBtn.addEventListener('click', doSaveProject);
+        mobileSaveProjectBtn.addEventListener('click', () => { doSaveProject(); mobileMenu.classList.remove('active'); });
+
+        function deleteProject(name) {
+            if (confirm(_('alertDeleteConfirm', {projectName: name}))) {
+                const projects = getProjects(); delete projects[name]; saveProjects(projects);
+                loadProjectList(); if (currentProjectName === name) showStartScreen();
+            }
+        }
+        imageUploadInput.addEventListener('change', (event) => {
+            const file = event.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                originalImageDataBase64 = e.target.result; originalImagePreview.src = originalImageDataBase64;
+                originalImagePreview.style.display = 'block'; processedImagePreview.style.display = 'none'; processedImagePreview.src = "#";
+            }
+            reader.readAsDataURL(file);
+        });
+
+        async function executePythonCode() {
+            if (!pyodide) { alert(_('alertPyodideNotReady')); return; }
+            const code = editor.getValue(); outputConsole.textContent = _('statusRunningCode') + '\n';
+            processedImagePreview.style.display = 'none'; processedImagePreview.src = "#";
+            try {
+                pyodide.globals.set('input_image_b64', originalImageDataBase64 || null);
+                pyodide.setStdout({ batched: (msg) => outputConsole.textContent += msg + "\n" });
+                pyodide.setStderr({ batched: (msg) => outputConsole.textContent += _('errorPrefix') + msg + "\n" });
+                let pythonWrapperCode = `
+import sys, io, base64; from js import Object
+try: from PIL import Image
+except ImportError: Image = None
+_stdout_capture, _stderr_capture = io.StringIO(), io.StringIO()
+sys.stdout, sys.stderr = _stdout_capture, _stderr_capture
+processed_image_b64_output, img_pil = None, None
+try:
+    if 'input_image_b64' in globals() and input_image_b64 and Image:
+        try:
+            header, encoded_data = input_image_b64.split(",", 1); image_bytes = base64.b64decode(encoded_data)
+            img_pil = Image.open(io.BytesIO(image_bytes))
+        except Exception as e: sys.stderr.write(f"Img Load Err: {e}\\n"); img_pil = None
+    namespace = {'img_pil': img_pil, 'input_image_b64': globals().get('input_image_b64'), 'print': print}
+    exec(user_code_to_run, namespace)
+    final_img_to_output = namespace.get('processed_img', namespace.get('img_pil'))
+    if final_img_to_output and Image and isinstance(final_img_to_output, Image.Image):
+        try:
+            buffered_output, output_format_str = io.BytesIO(), 'PNG'
+            if 'input_image_b64' in globals() and input_image_b64:
+                header_check = input_image_b64.split(",",1)[0]
+                if header_check.startswith('data:image/'):
+                    potential_format = header_check.split('/')[1].split(';')[0].upper()
+                    if potential_format == 'JPG': potential_format = 'JPEG'
+                    if potential_format in ['PNG', 'JPEG', 'GIF', 'WEBP']: output_format_str = potential_format
+            final_img_to_output.save(buffered_output, format=output_format_str)
+            processed_image_b64_output = f"data:image/{output_format_str.lower()};base64," + base64.b64encode(buffered_output.getvalue()).decode('utf-8')
+        except Exception as e: sys.stderr.write(f"Img Save Err: {e}\\n")
+except Exception as e: sys.stderr.write(str(e) + "\\n")
+finally: sys.stdout, sys.stderr = sys.__stdout__, sys.__stderr__
+results_dict_py = {'stdout': _stdout_capture.getvalue(), 'stderr': _stderr_capture.getvalue(), 'processed_image_b64': processed_image_b64_output}
+results_dict_py`;
+                pyodide.globals.set('user_code_to_run', code);
+                let results_pyproxy = await pyodide.runPythonAsync(pythonWrapperCode);
+                let resultsDict = results_pyproxy.toJs({dict_converter: Object.fromEntries}); results_pyproxy.destroy();
+                if (resultsDict.stdout) outputConsole.textContent += resultsDict.stdout;
+                if (resultsDict.stderr) outputConsole.textContent += _('errorPrefix') + resultsDict.stderr;
+                if (resultsDict.processed_image_b64) {
+                    processedImagePreview.src = resultsDict.processed_image_b64; processedImagePreview.style.display = 'block';
+                    outputConsole.textContent += "\n" + _('statusImageProcessed') + "\n";
+                }
+            } catch (error) {
+                outputConsole.textContent += _('statusJsErrorPyodide', {error: error.message || error}) + "\n"; console.error("Pyodide exec err:", error);
+            } finally { pyodide.setStdout({}); pyodide.setStderr({}); }
+        }
+        runCodeBtn.addEventListener('click', executePythonCode);
+        consoleRunBtnMobile.addEventListener('click', executePythonCode);
+        mobileRunCodeBtn.addEventListener('click', () => { executePythonCode(); mobileMenu.classList.remove('active'); });
+
+        function updateConnectionStatus(message) {
+            connStatusSpan.textContent = message; mobileConnStatusSpan.textContent = message;
+        }
+        function initPeer() {
+            peer = new Peer(undefined, {});
+            peer.on('open', (id) => {
+                myPeerIdSpan.textContent = id; mobileMyPeerIdSpan.textContent = id;
+                startSharingBtn.disabled = false; mobileStartSharingBtn.disabled = false;
+                connectToPeerBtn.disabled = false; mobileConnectToPeerBtn.disabled = false;
+                if (window.location.hash.startsWith('#collab=')) {
+                    const peerIdFromUrl = window.location.hash.substring('#collab='.length);
+                    if (peerIdFromUrl && peerIdFromUrl !== peer.id && !(currentConnection && currentConnection.peer === peerIdFromUrl && currentConnection.open)) {
+                        updateConnectionStatus(_('autoConnectingTo', {peerId: peerIdFromUrl}));
+                        connectPeerIdInput.value = peerIdFromUrl; mobileConnectPeerIdInput.value = peerIdFromUrl;
+                        connectToPeer(peerIdFromUrl);
+                    }
+                }
+            });
+            peer.on('connection', (conn) => {
+                updateConnectionStatus(_('statusIncomingConnection', {peerId: conn.peer}));
+                setupConnectionEvents(conn); hostConnections.push(conn);
+                conn.on('open', () => conn.send({ type: 'initial_code', content: editor.getValue(), lang: currentLanguage }));
+            });
+            peer.on('error', (err) => {
+                console.error("PeerJS error:", err); updateConnectionStatus(_('statusError', {errorType: err.type}));
+                if (err.type === 'unavailable-id') { peer = new Peer(); initPeer(); }
+                else if (err.type === 'peer-unavailable') updateConnectionStatus(_('statusPeerNotFound', {peerId: connectPeerIdInput.value || mobileConnectPeerIdInput.value}));
+            });
+            peer.on('disconnected', () => updateConnectionStatus(_('statusDisconnected')));
+            peer.on('close', () => {
+                updateConnectionStatus(_('statusPeerConnectionClosed'));
+                startSharingBtn.disabled = true; mobileStartSharingBtn.disabled = true;
+                connectToPeerBtn.disabled = true; mobileConnectToPeerBtn.disabled = true;
+            });
+        }
+        function setupConnectionEvents(conn) {
+            conn.on('data', (data) => {
+                if (data.type === 'initial_code' || data.type === 'code_update') {
+                    isUpdatingFromPeer = true; editor.setValue(data.content, 1); isUpdatingFromPeer = false;
+                }
+            });
+            conn.on('open', () => {
+                updateConnectionStatus(_('statusConnectedTo', {peerId: conn.peer}));
+                if (conn.peer === (connectPeerIdInput.value || mobileConnectPeerIdInput.value)) {
+                    currentConnection = conn; startSharingBtn.disabled = true; mobileStartSharingBtn.disabled = true;
+                    if (window.location.hash.startsWith('#collab=' + conn.peer)) history.pushState("", document.title, window.location.pathname + window.location.search);
+                }
+            });
+            conn.on('close', () => {
+                updateConnectionStatus(_('statusConnectionClosed', {peerId: conn.peer}));
+                if (currentConnection && currentConnection.peer === conn.peer) {
+                    currentConnection = null;
+                    const canShare = peer && peer.id;
+                    startSharingBtn.disabled = !canShare; mobileStartSharingBtn.disabled = !canShare;
+                }
+                hostConnections = hostConnections.filter(c => c.peer !== conn.peer);
+            });
+            conn.on('error', (err) => { console.error(`Conn error with ${conn.peer}:`, err); updateConnectionStatus(_('statusError', {errorType: `conn: ${err.type}`})); });
+        }
+        function showShareModal() {
+            if (!peer || !peer.id) { alert(_('alertPeerJSNotInitialized')); return; }
+            updateConnectionStatus(_('statusSharing', {peerId: peer.id}));
+            connectToPeerBtn.disabled = true; mobileConnectToPeerBtn.disabled = true;
+            const shareUrl = `${window.location.origin}${window.location.pathname}#collab=${peer.id}`;
+            shareableUrlInput.value = shareUrl; shareModal.style.display = 'flex';
+            copyUrlBtn.textContent = _('copyUrlButton'); mobileMenu.classList.remove('active');
+        }
+        startSharingBtn.addEventListener('click', showShareModal);
+        mobileStartSharingBtn.addEventListener('click', showShareModal);
+        closeShareModalBtn.addEventListener('click', () => shareModal.style.display = 'none');
+        copyUrlBtn.addEventListener('click', () => {
+            shareableUrlInput.select(); shareableUrlInput.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(shareableUrlInput.value).then(() => {
+                copyUrlBtn.textContent = _('urlCopied'); setTimeout(() => copyUrlBtn.textContent = _('copyUrlButton'), 2000);
+            }).catch(err => { console.warn('Clipboard write failed:', err); alert(_('urlCopied') + ": " + shareableUrlInput.value);});
+        });
+        shareModal.addEventListener('click', (event) => { if (event.target === shareModal) shareModal.style.display = 'none'; });
+
+        function connectToPeer(hostId) {
+            if (!peer || !peer.id) { alert(_('alertPeerJSNotInitialized')); return; }
+            if (!hostId) { alert(_('alertEnterHostPeerId')); return; }
+            if (hostId === peer.id) { alert(_('alertCannotConnectToSelf')); return; }
+            if (currentConnection && currentConnection.open) currentConnection.close();
+            updateConnectionStatus(_('statusConnectingTo', {peerId: hostId}));
+            currentConnection = peer.connect(hostId, { reliable: true }); setupConnectionEvents(currentConnection);
+        }
+        connectToPeerBtn.addEventListener('click', () => connectToPeer(connectPeerIdInput.value.trim()));
+        mobileConnectToPeerBtn.addEventListener('click', () => { connectToPeer(mobileConnectPeerIdInput.value.trim()); mobileMenu.classList.remove('active'); });
+
+        hamburgerMenuBtn.addEventListener('click', (e) => { e.stopPropagation(); mobileMenu.classList.toggle('active'); });
+        document.addEventListener('click', (event) => {
+            if (mobileMenu.classList.contains('active') && !mobileMenu.contains(event.target) && !hamburgerMenuBtn.contains(event.target)) {
+                mobileMenu.classList.remove('active');
+            }
+        });
+
+        function handleGoogleDriveConnect() { alert(_('googleDriveNotImplemented')); mobileMenu.classList.remove('active');}
+        if(googleDriveConnectBtnPlaceholder) googleDriveConnectBtnPlaceholder.addEventListener('click', handleGoogleDriveConnect);
+        if(googleDriveToolbarBtnPlaceholder) googleDriveToolbarBtnPlaceholder.addEventListener('click', handleGoogleDriveConnect);
+        if(mobileGoogleDriveBtnPlaceholder) mobileGoogleDriveBtnPlaceholder.addEventListener('click', handleGoogleDriveConnect);
+
+        languageSelector.addEventListener('change', (e) => applyLanguage(e.target.value));
+
+        async function main() {
+            let savedLang = localStorage.getItem('nestPyLanguage') || (translations[navigator.language.split('-')[0]] ? navigator.language.split('-')[0] : 'en');
+            languageSelector.value = savedLang; applyLanguage(savedLang);
+            setupEditor(); backToStartBtn.addEventListener('click', showStartScreen);
+            try {
+                await initPyodide(); initPeer();
+            } catch (error) {
+                console.error("Initialization failed:", error);
+                loader.querySelector('span[data-translate-key="loadingPyodide"]').textContent = _('statusJsErrorPyodide', {error: error.message || error});
+                loaderPackageStatus.textContent = ''; return;
+            }
+            showStartScreen();
+        }
+        window.onload = main;
+    </script>
+</body>
+</html>

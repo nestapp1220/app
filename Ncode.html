@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nest Code (PeerJS Edition - Fix)</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- Start Screen --- */
+        #start-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #start-screen h1 {
+            color: #4CAF50;
+            /* Nest Code Green */
+        }
+
+        #start-screen .project-actions input[type="text"] {
+            padding: 10px;
+            margin-right: 10px;
+            border: 1px solid #333;
+            background-color: #252526;
+            color: #d4d4d4;
+            border-radius: 4px;
+        }
+
+        #start-screen .project-actions button {
+            padding: 10px 15px;
+            background-color: #007acc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+
+        #start-screen .project-actions button:hover {
+            background-color: #005f9e;
+        }
+
+        #project-list-container {
+            margin-top: 30px;
+            width: 80%;
+            max-width: 500px;
+        }
+
+        #project-list-container h2 {
+            color: #ccc;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+        }
+
+        #project-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        #project-list li {
+            background-color: #252526;
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #project-list li:hover {
+            background-color: #333333;
+        }
+
+        #project-list li .delete-project-btn {
+            background-color: #c0392b;
+            color: white;
+            border: none;
+            padding: 5px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        #project-list li .delete-project-btn:hover {
+            background-color: #a93226;
+        }
+
+
+        /* --- Editor Screen --- */
+        #editor-screen {
+            display: none;
+            /* Initially hidden */
+            flex-direction: row;
+            height: 100%;
+            width: 100%;
+        }
+
+        #file-explorer {
+            width: 250px;
+            background-color: #252526;
+            padding: 10px;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        #file-explorer h3 {
+            margin-top: 0;
+            color: #ccc;
+            border-bottom: 1px solid #444;
+            padding-bottom: 8px;
+        }
+
+        #file-explorer input[type="text"] {
+            width: calc(100% - 22px);
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #333;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            border-radius: 3px;
+        }
+
+        #file-explorer button {
+            width: 100%;
+            padding: 8px;
+            background-color: #007acc;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        #file-explorer button:hover {
+            background-color: #005f9e;
+        }
+
+        #file-tree {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex-grow: 1;
+        }
+
+        #file-tree li {
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 3px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #file-tree li:hover {
+            background-color: #333333;
+        }
+
+        #file-tree li.active {
+            background-color: #007acc;
+            color: white;
+        }
+
+        #file-tree li .delete-file-btn {
+            background-color: transparent;
+            color: #d4d4d4;
+            border: none;
+            padding: 2px 5px;
+            cursor: pointer;
+            font-size: 0.8em;
+            visibility: hidden;
+            /* Hidden by default */
+        }
+
+        #file-tree li:hover .delete-file-btn {
+            visibility: visible;
+            /* Show on hover */
+        }
+
+        #file-tree li .delete-file-btn:hover {
+            color: #c0392b;
+        }
+
+
+        #main-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #editor-controls {
+            padding: 10px;
+            background-color: #333333;
+            border-bottom: 1px solid #1e1e1e;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #editor-controls button,
+        #back-to-start-btn {
+            padding: 8px 12px;
+            background-color: #007acc;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        #editor-controls button:hover,
+        #back-to-start-btn:hover {
+            background-color: #005f9e;
+        }
+
+        #current-project-name {
+            font-weight: bold;
+            margin-right: auto;
+            /* Pushes collaboration to the right */
+        }
+
+        #collaboration-status {
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+
+        #share-url-container {
+            margin-left: 10px;
+        }
+
+        #share-url-container input {
+            padding: 5px;
+            background-color: #252526;
+            color: #d4d4d4;
+            border: 1px solid #555;
+            border-radius: 3px;
+            min-width: 250px;
+        }
+
+        #my-peer-id-container {
+            margin-left: 10px;
+            font-size: 0.9em;
+        }
+
+
+        #editor-container {
+            flex-grow: 1;
+            width: 100%;
+        }
+    </style>
+    <!-- Monaco Editor Loader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs/loader.min.js"></script>
+    <!-- PeerJS CDN -->
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+</head>
+
+<body>
+    <!-- Start Screen -->
+    <div id="start-screen">
+        <h1>Nest Code <small>(PeerJS Edition)</small></h1>
+        <div class="project-actions">
+            <input type="text" id="project-name-input" placeholder="新しいプロジェクト名">
+            <button id="create-project-btn">プロジェクト作成</button>
+        </div>
+        <div id="project-list-container">
+            <h2>既存のプロジェクト</h2>
+            <ul id="project-list">
+                <!-- Projects will be listed here -->
+            </ul>
+            <p id="no-projects-message" style="display:none; text-align:center; color:#777;">プロジェクトがありません。</p>
+        </div>
+        <p style="margin-top: 20px; font-size: 0.9em; color: #888;">
+            ヒント: 共同編集機能はPeerJSを使用します。<br>
+            ローカルでのプロジェクト作成・ファイル編集・保存・ダウンロードは常時可能です。
+        </p>
+    </div>
+
+    <!-- Editor Screen -->
+    <div id="editor-screen">
+        <div id="file-explorer">
+            <h3 id="current-project-label">プロジェクト</h3>
+            <button id="new-file-btn">新しいファイル</button>
+            <input type="text" id="new-file-name-input" placeholder="ファイル名 (例: index.html)">
+            <ul id="file-tree">
+                <!-- Files will be listed here -->
+            </ul>
+        </div>
+        <div id="main-area">
+            <div id="editor-controls">
+                <button id="back-to-start-btn">ホームに戻る</button>
+                <span id="current-project-name"></span>
+                <button id="save-file-btn">保存</button>
+                <button id="download-file-btn">ダウンロード</button>
+                <button id="share-session-btn">共同編集開始</button>
+                <div id="my-peer-id-container" style="display:none;">
+                    あなたのPeer ID: <strong id="my-peer-id-display"></strong> (これを共有)
+                </div>
+                <div id="share-url-container" style="display:none;">
+                    共有URL: <input type="text" id="share-url-input" readonly>
+                </div>
+                <span id="collaboration-status"></span>
+            </div>
+            <div id="editor-container"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- PeerJS Configuration ---
+        // const peerJsConfig = { host: 'localhost', port: 9000, path: '/myapp' };
+
+        // --- グローバル変数 ---
+        let monacoEditor;
+        let currentProject = null;
+        let currentFile = null;
+        let projects = {};
+
+        let peer;
+        let currentPeerId = null;
+        let hostPeerIdToConnect = null;
+        let dataConnection = null;
+        let isHost = false; // ★★★ このフラグを「共同編集開始」ボタンで明確にセットする
+        let editorUpdateFromPeer = false;
+
+
+        // --- DOM要素 ---
+        const startScreen = document.getElementById('start-screen');
+        const editorScreen = document.getElementById('editor-screen');
+        const projectNameInput = document.getElementById('project-name-input');
+        const createProjectBtn = document.getElementById('create-project-btn');
+        const projectList = document.getElementById('project-list');
+        const noProjectsMessage = document.getElementById('no-projects-message');
+
+        const fileExplorer = document.getElementById('file-explorer');
+        const currentProjectLabel = document.getElementById('current-project-label');
+        const newFileBtn = document.getElementById('new-file-btn');
+        const newFileNameInput = document.getElementById('new-file-name-input');
+        const fileTree = document.getElementById('file-tree');
+
+        const editorControls = document.getElementById('editor-controls');
+        const backToStartBtn = document.getElementById('back-to-start-btn');
+        const currentProjectNameSpan = document.getElementById('current-project-name');
+        const saveFileBtn = document.getElementById('save-file-btn');
+        const downloadFileBtn = document.getElementById('download-file-btn');
+        const editorContainer = document.getElementById('editor-container');
+
+        const shareSessionBtn = document.getElementById('share-session-btn');
+        const myPeerIdContainer = document.getElementById('my-peer-id-container');
+        const myPeerIdDisplay = document.getElementById('my-peer-id-display');
+        const shareUrlContainer = document.getElementById('share-url-container');
+        const shareUrlInput = document.getElementById('share-url-input');
+        const collaborationStatus = document.getElementById('collaboration-status');
+
+        // --- 初期化 ---
+        window.onload = () => {
+            initMonacoEditor();
+            loadProjects();
+            checkUrlForSessionJoin();
+            setupEventListeners();
+            // PeerJSの初期化は、共同編集開始時か、URLにpeeridがある場合に行うように変更
+            // initPeerJS(); // ★★★ ここでは呼ばない
+
+            if (!hostPeerIdToConnect && editorScreen.style.display !== 'flex') {
+                showStartScreen();
+            } else if (hostPeerIdToConnect) { // URLにpeeridがあれば、ゲストとしてPeerJSを初期化
+                initPeerJSAndConnectAsGuest(hostPeerIdToConnect);
+            }
+        };
+
+        function initMonacoEditor() {
+            require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs' } });
+            require(['vs/editor/editor.main'], function () {
+                monacoEditor = monaco.editor.create(editorContainer, {
+                    value: '// Nest Codeへようこそ！',
+                    language: 'plaintext',
+                    theme: 'vs-dark',
+                    automaticLayout: true
+                });
+
+                monacoEditor.onDidChangeModelContent(event => {
+                    if (currentProject && currentFile && projects[currentProject]?.files?.[currentFile]) {
+                        if (!editorUpdateFromPeer) {
+                            projects[currentProject].files[currentFile].content = monacoEditor.getValue();
+                            if (dataConnection && dataConnection.open) {
+                                sendEditorContentToPeer(monacoEditor.getValue());
+                            }
+                        }
+                        editorUpdateFromPeer = false;
+                    }
+                });
+            });
+        }
+
+        function checkUrlForSessionJoin() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const peerIdFromUrl = urlParams.get('peerid');
+            if (peerIdFromUrl) {
+                hostPeerIdToConnect = peerIdFromUrl;
+                console.log(`URL contains host Peer ID: ${hostPeerIdToConnect}. Will attempt to connect after PeerJS init.`);
+                collaborationStatus.textContent = `ホスト(${hostPeerIdToConnect.substring(0, 8)}...)に接続試行中...`;
+
+                currentProject = `collab_session_${Date.now()}`;
+                projects[currentProject] = { files: {} };
+                currentFile = "shared_file.txt";
+                projects[currentProject].files[currentFile] = { content: "// 共同編集中...\n// ホストからのデータ受信待機中", language: "plaintext" };
+
+                showEditorScreen();
+                renderFileTree();
+                updateEditorContent(projects[currentProject].files[currentFile].content, "plaintext");
+            }
+        }
+
+        // --- UI制御 (変更なし) ---
+        function showStartScreen() {
+            startScreen.style.display = 'flex';
+            editorScreen.style.display = 'none';
+            renderProjectList();
+            if (!hostPeerIdToConnect && window.history.replaceState) {
+                const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+            }
+        }
+        function showEditorScreen() {
+            startScreen.style.display = 'none';
+            editorScreen.style.display = 'flex';
+            if (monacoEditor) monacoEditor.layout();
+            currentProjectNameSpan.textContent = `プロジェクト: ${currentProject || '未選択'}`;
+            currentProjectLabel.textContent = currentProject || 'プロジェクト';
+        }
+        function renderProjectList() {
+            projectList.innerHTML = '';
+            const projectNames = Object.keys(projects);
+            if (projectNames.length === 0) {
+                noProjectsMessage.style.display = 'block';
+                return;
+            }
+            noProjectsMessage.style.display = 'none';
+            projectNames.forEach(name => {
+                if (typeof name !== 'string' || name.trim() === "") return;
+                const li = document.createElement('li');
+                li.textContent = name;
+                li.dataset.projectName = name;
+                li.addEventListener('click', () => selectProject(name));
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = '削除';
+                deleteBtn.className = 'delete-project-btn';
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (confirm(`プロジェクト「${name}」を削除しますか？この操作は元に戻せません。`)) {
+                        deleteProject(name);
+                    }
+                });
+                li.appendChild(deleteBtn);
+                projectList.appendChild(li);
+            });
+        }
+        function renderFileTree() {
+            fileTree.innerHTML = '';
+            if (!currentProject || !projects[currentProject] || !projects[currentProject].files) {
+                const li = document.createElement('li');
+                li.textContent = "ファイルがありません";
+                li.style.color = "#888"; li.style.cursor = "default";
+                fileTree.appendChild(li);
+                return;
+            }
+            const files = projects[currentProject].files;
+            const fileNames = Object.keys(files);
+            if (fileNames.length === 0) {
+                const li = document.createElement('li');
+                li.textContent = "ファイルがありません";
+                li.style.color = "#888"; li.style.cursor = "default";
+                fileTree.appendChild(li);
+                return;
+            }
+            fileNames.forEach(fileName => {
+                const li = document.createElement('li');
+                const fileNameSpan = document.createElement('span');
+                fileNameSpan.textContent = fileName;
+                li.appendChild(fileNameSpan);
+                li.dataset.fileName = fileName;
+                if (fileName === currentFile) li.classList.add('active');
+                li.addEventListener('click', () => selectFile(fileName));
+                const deleteBtn = document.createElement('button');
+                deleteBtn.innerHTML = '×';
+                deleteBtn.className = 'delete-file-btn';
+                deleteBtn.title = 'ファイルを削除';
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (confirm(`ファイル「${fileName}」を削除しますか？`)) deleteFile(fileName);
+                });
+                li.appendChild(deleteBtn);
+                fileTree.appendChild(li);
+            });
+        }
+
+        // --- プロジェクト管理 (変更なし) ---
+        function createProject() {
+            const projectName = projectNameInput.value.trim();
+            if (!projectName) { alert('プロジェクト名を入力してください。'); return; }
+            if (projects[projectName]) { alert('同じ名前のプロジェクトが既に存在します。'); return; }
+            projects[projectName] = { files: {} };
+            currentProject = projectName;
+            currentFile = null;
+            saveProjects();
+            projectNameInput.value = '';
+            showEditorScreen();
+            renderFileTree();
+            updateEditorContent('// 新しいプロジェクトが作成されました。\n// 左の「新しいファイル」からファイルを作成してください。', 'plaintext');
+            // alert(`プロジェクト「${projectName}」を作成しました。`); // 冗長なのでコメントアウト
+            renderProjectList();
+        }
+        function deleteProject(projectName) {
+            if (projects[projectName]) {
+                delete projects[projectName];
+                saveProjects();
+                renderProjectList();
+                if (currentProject === projectName) {
+                    currentProject = null; currentFile = null;
+                    const remainingProjects = Object.keys(projects);
+                    if (remainingProjects.length > 0) selectProject(remainingProjects[0]);
+                    else showStartScreen();
+                }
+                alert(`プロジェクト「${projectName}」を削除しました。`);
+            }
+        }
+        function selectProject(projectName) {
+            if (!projects[projectName]) {
+                alert(`プロジェクト「${projectName}」が見つかりません。`);
+                showStartScreen(); return;
+            }
+            currentProject = projectName;
+            currentFile = null;
+            const filesInProject = projects[currentProject].files ? Object.keys(projects[currentProject].files) : [];
+            if (filesInProject.length > 0) selectFile(filesInProject[0]);
+            else updateEditorContent(`// プロジェクト「${currentProject}」にはファイルがありません。\n// 左の「新しいファイル」からファイルを作成してください。`, 'plaintext');
+            showEditorScreen();
+            renderFileTree();
+        }
+        function saveProjects() {
+            try {
+                if (typeof projects !== 'object' || projects === null || Array.isArray(projects)) projects = {};
+                localStorage.setItem('nestCodeProjects', JSON.stringify(projects));
+            } catch (e) {
+                console.error("Error saving projects to localStorage:", e);
+                alert("プロジェクトの保存に失敗しました。");
+            }
+        }
+        function loadProjects() {
+            const storedProjects = localStorage.getItem('nestCodeProjects');
+            if (storedProjects) {
+                try {
+                    let parsedProjects = JSON.parse(storedProjects);
+                    if (Array.isArray(parsedProjects) || typeof parsedProjects !== 'object' || parsedProjects === null) projects = {};
+                    else projects = parsedProjects;
+                } catch (e) { projects = {}; }
+            } else { projects = {}; }
+        }
+
+        // --- ファイル管理 (selectFileの末尾に共同編集時の送信ロジック追加) ---
+        function createFile() {
+            if (!currentProject) { alert('まずプロジェクトを選択または作成してください。'); return; }
+            const fileName = newFileNameInput.value.trim();
+            if (!fileName) { alert('ファイル名を入力してください。'); return; }
+            if (projects[currentProject].files && projects[currentProject].files[fileName]) {
+                alert('同じ名前のファイルが既に存在します。'); return;
+            }
+            const language = getLanguageForFile(fileName);
+            if (!projects[currentProject].files) projects[currentProject].files = {};
+            projects[currentProject].files[fileName] = { content: `// New file: ${fileName}\n`, language: language };
+            currentFile = fileName;
+            saveProjects();
+            newFileNameInput.value = '';
+            renderFileTree();
+            selectFile(fileName);
+        }
+        function deleteFile(fileName) {
+            if (currentProject && projects[currentProject]?.files?.[fileName]) {
+                delete projects[currentProject].files[fileName];
+                saveProjects();
+                if (currentFile === fileName) {
+                    currentFile = null;
+                    updateEditorContent('// ファイルが削除されました。\n// 別のファイルを選択するか、新しいファイルを作成してください。', 'plaintext');
+                }
+                renderFileTree();
+                if (projects[currentProject].files && Object.keys(projects[currentProject].files).length === 0) {
+                    updateEditorContent(`// プロジェクト「${currentProject}」にはファイルがありません。`, 'plaintext');
+                } else if (!currentFile && projects[currentProject].files) {
+                    const firstFile = Object.keys(projects[currentProject].files)[0];
+                    if (firstFile) selectFile(firstFile);
+                }
+            }
+        }
+        function selectFile(fileName) {
+            if (!currentProject || !projects[currentProject]?.files?.[fileName]) {
+                updateEditorContent(`// ファイル「${fileName}」の読み込みに失敗しました。`, 'plaintext');
+                return;
+            }
+            currentFile = fileName;
+            const fileData = projects[currentProject].files[fileName];
+            updateEditorContent(fileData.content, fileData.language);
+            renderFileTree();
+
+            if (isHost && dataConnection && dataConnection.open) {
+                sendEditorContentToPeer(fileData.content);
+            }
+        }
+        function saveCurrentFile() {
+            if (!currentProject || !currentFile) { alert('保存するファイルが選択されていません。'); return; }
+            saveProjects();
+            alert(`ファイル「${currentFile}」を保存しました。`);
+        }
+        function downloadCurrentFile() {
+            if (!currentProject || !currentFile || !monacoEditor) { alert('ダウンロードするファイルが選択されていません。'); return; }
+            const content = monacoEditor.getValue();
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = currentFile;
+            document.body.appendChild(a); a.click();
+            document.body.removeChild(a); URL.revokeObjectURL(url);
+        }
+        function updateEditorContent(content, language = 'plaintext') {
+            if (!monacoEditor) return;
+            editorUpdateFromPeer = true;
+            const currentModel = monacoEditor.getModel();
+            if (currentModel && typeof monaco !== 'undefined' && monaco.editor?.setModelLanguage) {
+                monaco.editor.setModelLanguage(currentModel, language);
+            }
+            monacoEditor.setValue(content);
+        }
+        function getLanguageForFile(fileName) {
+            const ext = fileName.split('.').pop().toLowerCase();
+            const map = { html: 'html', htm: 'html', css: 'css', js: 'javascript', py: 'python', json: 'json', md: 'markdown', xml: 'xml', java: 'java', c: 'cpp', cpp: 'cpp', h: 'cpp', ts: 'typescript', go: 'go', php: 'php', rb: 'ruby', sh: 'shell' };
+            return map[ext] || 'plaintext';
+        }
+
+        // --- PeerJS 共同編集 ---
+
+        // PeerJS初期化とイベントハンドラ設定（共通部分）
+        function initializeNewPeer() {
+            if (peer && !peer.destroyed) {
+                peer.destroy(); // 古いインスタンスがあれば破棄
+            }
+            peer = new Peer(); // 新しいPeerインスタンス (PeerJSの公開サーバーを使用)
+            // peer = new Peer(undefined, peerJsConfig); // 自前サーバーの場合
+
+            peer.on('open', (id) => {
+                currentPeerId = id;
+                console.log('My PeerJS ID is:', currentPeerId);
+                myPeerIdDisplay.textContent = currentPeerId;
+
+                if (isHost) { // ホストとしてセッション開始しようとしている場合
+                    const shareUrl = `${window.location.origin}${window.location.pathname}?peerid=${currentPeerId}`;
+                    shareUrlInput.value = shareUrl;
+                    myPeerIdContainer.style.display = 'inline-block';
+                    shareUrlContainer.style.display = 'inline-block';
+                    collaborationStatus.textContent = "ゲストの接続待機中... (ID共有)";
+                    shareSessionBtn.textContent = "共同編集終了";
+                } else if (hostPeerIdToConnect) { // ゲストとして接続しようとしている場合
+                    console.log(`PeerJS initialized for guest. Attempting to connect to host: ${hostPeerIdToConnect}`);
+                    connectToHost(hostPeerIdToConnect);
+                }
+            });
+
+            peer.on('connection', (conn) => {
+                console.log('Incoming connection from:', conn.peer);
+                if (dataConnection && dataConnection.open) {
+                    console.warn("Already connected to a peer. Rejecting new connection from " + conn.peer);
+                    conn.on('open', () => conn.send({ type: 'error', message: 'Host is already in a session.' }));
+                    setTimeout(() => conn.close(), 500);
+                    return;
+                }
+
+                dataConnection = conn;
+                // isHostフラグはセッション開始側がtrueなので、ここでは変更しない。
+                // 厳密には、接続を受け入れた側が常にホストというわけではない。
+                setupDataConnectionEvents();
+            });
+
+            peer.on('disconnected', () => {
+                collaborationStatus.textContent = 'PeerJSサーバーから切断されました。再接続試行中...';
+                console.log('Disconnected from PeerJS server. Attempting to reconnect...');
+            });
+
+            peer.on('close', () => {
+                console.log('Peer object closed.');
+                // cleanupCollaboration(); // ここで呼ぶとループする可能性があるので注意
+            });
+
+            peer.on('error', (err) => {
+                console.error('PeerJS Error:', err);
+                collaborationStatus.textContent = `エラー: ${err.type}`;
+                if (err.type === 'unavailable-id') {
+                    alert("指定されたPeer IDは利用できません。別のIDで再試行してください。");
+                } else if (err.type === 'peer-unavailable') {
+                    alert(`ホストピア (${hostPeerIdToConnect || '不明'}) が見つかりません。`);
+                    // ゲスト側のエラーならスタートに戻す
+                    if (!isHost) {
+                        cleanupCollaboration();
+                        showStartScreen();
+                    }
+                } else if (err.type === 'network') {
+                    alert('ネットワークエラー。PeerJSサーバーに接続できませんでした。');
+                }
+                // エラーの種類によってはセッションクリーンアップが必要
+                if (isHost && (err.type === 'server-error' || err.type === 'socket-error' || err.type === 'network')) {
+                    cleanupCollaboration(); // ホスト側で致命的なエラーならセッション終了
+                }
+            });
+        }
+
+        // ホストとしてセッションを開始する
+        function startCollaborationSessionAsHost() {
+            // ★★★ プロジェクトとファイルが開かれているか確認 ★★★
+            if (!currentProject || !currentFile) {
+                alert("共同編集を開始するには、プロジェクトとファイルを開いてください。");
+                console.warn("Attempted to start collaboration without project/file. Current project:", currentProject, "Current file:", currentFile);
+                return;
+            }
+
+            isHost = true; // これが重要
+            console.log("Starting collaboration as host...");
+            initializeNewPeer(); // PeerJSを初期化（または再初期化）
+        }
+
+        // ゲストとしてホストに接続する (onloadで呼ばれる想定)
+        function initPeerJSAndConnectAsGuest(targetHostPeerId) {
+            isHost = false;
+            hostPeerIdToConnect = targetHostPeerId; // 接続先のIDを保持
+            console.log("Initializing PeerJS as guest to connect to:", targetHostPeerId);
+            initializeNewPeer(); // PeerJSを初期化、'open'イベント内でconnectToHostが呼ばれる
+        }
+
+
+        function connectToHost(targetHostPeerId) {
+            if (!peer || peer.disconnected) {
+                alert("PeerJSの接続が確立されていません。ページを再読み込みするか、しばらく待ってから再試行してください。");
+                collaborationStatus.textContent = "PeerJS未接続";
+                return;
+            }
+            if (!targetHostPeerId) {
+                alert("接続先のホストPeer IDがありません。");
+                return;
+            }
+            console.log(`Connecting to ${targetHostPeerId}`);
+            collaborationStatus.textContent = `ホスト (${targetHostPeerId.substring(0, 8)}...) に接続中...`;
+
+            // 既存の接続があれば閉じる
+            if (dataConnection) {
+                dataConnection.close();
+            }
+
+            dataConnection = peer.connect(targetHostPeerId, { reliable: true });
+            // isHost = false; // これはinitPeerJSAndConnectAsGuestでセット済み
+            setupDataConnectionEvents(); // 新しいdataConnectionに対してイベントハンドラを設定
+        }
+
+        function setupDataConnectionEvents() {
+            if (!dataConnection) return;
+
+            dataConnection.on('open', () => {
+                console.log(`Data connection established with ${dataConnection.peer}`);
+                collaborationStatus.textContent = `共同編集中 (相手: ${dataConnection.peer.substring(0, 8)}...)`;
+                shareSessionBtn.textContent = "共同編集終了";
+                myPeerIdContainer.style.display = 'none';
+                shareUrlContainer.style.display = 'none';
+
+                if (isHost && currentFile && projects[currentProject]?.files?.[currentFile]) {
+                    sendEditorContentToPeer(projects[currentProject].files[currentFile].content);
+                }
+            });
+
+            dataConnection.on('data', (data) => {
+                console.log("Data received:", data.type, data.fileName || '');
+                // editorUpdateFromPeer = true; // ここでセットすると自分の入力も無視される可能性。setValue直前にする
+                if (data.type === 'editor_content') {
+                    const { content, language, fileName } = data;
+
+                    if (!isHost) {
+                        if (!projects[currentProject]) {
+                            currentProject = `collab_session_${dataConnection.peer}`;
+                            projects[currentProject] = { files: {} };
+                        }
+                        if (!projects[currentProject].files[fileName]) {
+                            projects[currentProject].files[fileName] = { content: "", language: language };
+                        }
+                        if (currentFile !== fileName) {
+                            currentFile = fileName;
+                            projects[currentProject].files[currentFile].language = language;
+                            renderFileTree();
+                        }
+                    }
+
+                    if (currentFile === fileName) {
+                        if (projects[currentProject]?.files?.[currentFile]) {
+                            projects[currentProject].files[currentFile].content = content;
+                        }
+                        updateEditorContent(content, language); // ここでeditorUpdateFromPeer = trueになる
+                    }
+                } else if (data.type === 'error' && data.message) {
+                    alert(`相手からのエラー: ${data.message}`);
+                    cleanupCollaboration();
+                }
+                // editorUpdateFromPeer = false; // onDidChangeModelContent内でリセット
+            });
+
+            dataConnection.on('close', () => {
+                console.log(`Data connection with ${dataConnection.label || dataConnection.peer} closed.`);
+                if (!collaborationStatus.textContent.includes("エラー")) { // エラーで閉じたのでなければ
+                    collaborationStatus.textContent = "相手との接続が切れました。";
+                }
+                cleanupCollaboration();
+                if (!isHost && currentProject && currentProject.startsWith("collab_session_")) {
+                    projects = {};
+                    loadProjects();
+                    showStartScreen();
+                }
+            });
+
+            dataConnection.on('error', (err) => {
+                console.error('DataConnection Error:', err);
+                collaborationStatus.textContent = `データ接続エラー: ${err.type}`;
+                cleanupCollaboration();
+            });
+        }
+
+        function sendEditorContentToPeer(content) {
+            if (dataConnection && dataConnection.open) {
+                const language = (currentFile && projects[currentProject]?.files?.[currentFile]) ? projects[currentProject].files[currentFile].language : 'plaintext';
+                const message = {
+                    type: 'editor_content',
+                    content: content,
+                    language: language,
+                    fileName: currentFile
+                };
+                try {
+                    dataConnection.send(message);
+                } catch (e) {
+                    console.error("Error sending data via data channel:", e);
+                }
+            }
+        }
+
+        function cleanupCollaboration() {
+            console.log("Cleaning up collaboration session...");
+            if (dataConnection) {
+                dataConnection.close();
+                dataConnection = null;
+            }
+
+            // Peerオブジェクトは破棄せず、次のセッションで再利用可能にする（IDは変わる）
+            // もし完全にリセットしたいなら peer.destroy(); を呼ぶ
+            // if (peer && !peer.destroyed) {
+            //     peer.destroy(); // これを呼ぶとpeer.on('close')が発火する
+            //     peer = null;
+            // }
+
+
+            isHost = false;
+            hostPeerIdToConnect = null;
+            // currentPeerId = null; // peer.destroy()しないなら維持されるが、次のセッションでは新しいIDが振られる
+
+            myPeerIdContainer.style.display = 'none';
+            shareUrlContainer.style.display = 'none';
+            shareUrlInput.value = '';
+            if (!collaborationStatus.textContent.includes("エラー") && !collaborationStatus.textContent.includes("切断")) {
+                if (collaborationStatus.textContent !== "") { // 何か表示されていれば
+                    collaborationStatus.textContent = "共同編集 終了";
+                }
+            }
+            shareSessionBtn.textContent = "共同編集開始";
+
+            if (window.history.replaceState) {
+                const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+            }
+        }
+
+
+        // --- イベントリスナー設定 ---
+        function setupEventListeners() {
+            createProjectBtn.addEventListener('click', createProject);
+            newFileBtn.addEventListener('click', createFile);
+            saveFileBtn.addEventListener('click', saveCurrentFile);
+            downloadFileBtn.addEventListener('click', downloadCurrentFile);
+
+            backToStartBtn.addEventListener('click', () => {
+                if (dataConnection) {
+                    if (confirm("共同編集セッションを終了してホームに戻りますか？")) {
+                        cleanupCollaboration();
+                        projects = {};
+                        loadProjects();
+                        showStartScreen();
+                    }
+                } else {
+                    // 共同編集中でなくても、ホストとしてID表示中ならクリーンアップ
+                    if (isHost && currentPeerId) cleanupCollaboration();
+                    currentProject = null;
+                    currentFile = null;
+                    showStartScreen();
+                }
+            });
+
+            shareSessionBtn.addEventListener('click', () => {
+                if ((dataConnection && dataConnection.open) || (isHost && currentPeerId && !dataConnection)) {
+                    // 接続中、またはホストとして待機中なら終了処理
+                    if (confirm("共同編集セッションを終了しますか？")) {
+                        cleanupCollaboration();
+                    }
+                } else {
+                    startCollaborationSessionAsHost(); // ここでプロジェクト・ファイルチェックが行われる
+                }
+            });
+        }
+
+    </script>
+</body>
+
+</html>

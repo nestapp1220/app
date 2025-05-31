@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>FileBridge (改)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* 基本設定 */
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: sans-serif;
+            background: #f0f0f0;
+        }
+
+        /* 中央揃えレイアウト */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* カードスタイル */
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            max-width: 420px;
+            width: 100%;
+            box-sizing: border-box;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+
+        /* 見出し */
+        h2 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #333;
+        }
+
+        /* ボタン */
+        button {
+            margin: 5px 5px 10px 0;
+            padding: 10px 20px;
+            border: none;
+            background: #007bff;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            font-size: 1rem;
+        }
+
+        button:hover:not(:disabled) {
+            background: #0056b3;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        /* ファイル入力 */
+        input[type="file"] {
+            display: block;
+            margin-bottom: 10px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: calc(100% - 18px);
+            box-sizing: border-box;
+        }
+
+        /* テキストエリア */
+        textarea {
+            width: 100%;
+            height: 100px;
+            resize: vertical;
+            font-family: monospace;
+            box-sizing: border-box;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            line-height: 1.4;
+            font-size: 0.85em;
+        }
+
+        /* ラベル */
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        /* QRコード表示エリア */
+        .qr-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 25px 0;
+            min-height: 380px;
+        }
+
+        .qr {
+            max-width: 100%;
+            text-align: center;
+            width: 100%;
+        }
+
+        .qr svg {
+            display: block;
+            margin: 0 auto;
+            max-width: 350px;
+            width: 100%;
+            height: auto;
+            background-color: white;
+            padding: 15px;
+            box-sizing: border-box;
+            border: 1px solid #eee;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .qr div {
+            font-size: 1em;
+            color: #888;
+            padding: 20px;
+        }
+
+        .qr-error {
+            font-size: 0.9em;
+            color: #dc3545;
+            font-weight: bold;
+            padding: 15px;
+            border: 1px solid #f5c6cb;
+            background-color: #f8d7da;
+            border-radius: 4px;
+            display: inline-block;
+            max-width: 90%;
+        }
+
+        /* ファイルリスト */
+        .file-list {
+            margin-bottom: 15px;
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+            font-size: 0.9em;
+        }
+
+        .file-list div {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            padding-bottom: 6px;
+            border-bottom: 1px dashed #eee;
+        }
+
+        .file-list div:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .file-list button {
+            background: #dc3545;
+            padding: 2px 8px;
+            font-size: 12px;
+            margin: 0;
+            flex-shrink: 0;
+            margin-left: 8px;
+        }
+
+        .file-list button:hover:not(:disabled) {
+            background: #c82333;
+        }
+
+        .file-list span {
+            word-break: break-all;
+            margin-right: 5px;
+        }
+
+        .file-list-empty {
+            color: #888;
+            text-align: center;
+        }
+
+        .file-list-total {
+            font-weight: bold;
+            margin-top: 10px;
+            border-top: 1px solid #ccc;
+            padding-top: 8px;
+            text-align: right;
+        }
+
+        /* 進捗バー */
+        .progress-container {
+            margin-top: 15px;
+            background-color: #e9ecef;
+            border-radius: .25rem;
+            overflow: hidden;
+            height: 22px;
+            display: none;
+        }
+
+        .progress-bar {
+            background-color: #28a745;
+            width: 0%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8em;
+            font-weight: bold;
+            transition: width 0.2s ease-out;
+            white-space: nowrap;
+        }
+
+        .progress-bar.sending {
+            background-color: #007bff;
+        }
+
+        .progress-bar.receiving {
+            background-color: #28a745;
+        }
+
+        .progress-bar.complete {
+            background-color: #198754;
+        }
+
+        /* ステータス表示 */
+        .status {
+            font-size: 0.9em;
+            color: #555;
+            text-align: center;
+            margin-top: 15px;
+            min-height: 1.3em;
+            word-wrap: break-word;
+            background-color: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #eee;
+        }
+
+        .status.error {
+            color: #dc3545;
+            font-weight: bold;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+
+        .status.success {
+            color: #198754;
+            font-weight: bold;
+            background-color: #d1e7dd;
+            border-color: #badbcc;
+        }
+
+        /* 補足テキスト */
+        small {
+            font-size: 0.8em;
+            color: #6c757d;
+            display: block;
+            margin: 10px 0 15px;
+            text-align: center;
+        }
+
+        /* レスポンシブ対応 */
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            .card {
+                padding: 15px;
+                max-height: calc(100vh - 20px);
+            }
+
+            .qr-wrapper {
+                min-height: 300px;
+                margin: 20px 0;
+            }
+
+            .qr svg {
+                max-width: 280px;
+                padding: 10px;
+            }
+
+            button {
+                padding: 8px 16px;
+                font-size: 0.9rem;
+            }
+
+            textarea {
+                height: 80px;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* フローティングロゴ */
+        .floating-logo2 {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            text-decoration: none;
+            z-index: 999;
+        }
+
+        .logo-container {
+            background-color: #ffeb3b;
+            padding: 8px 12px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .logo-container:hover {
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+        }
+
+        .logo-text {
+            font-size: 12px;
+            color: #333;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h2>FileBridge</h2>
+        <div>
+            <button id="senderBtn" onclick="switchMode('sender')">送信</button>
+            <button id="receiverBtn" onclick="switchMode('receiver')">受信</button>
+        </div>
+
+        <!-- 送信者UI -->
+        <div id="senderUI" style="display:none">
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+            <label for="fileInput">1. ファイル選択 (複数可):</label>
+            <input type="file" id="fileInput" multiple>
+            <div id="fileList" class="file-list">
+                <div class="file-list-empty">ファイルが選択されていません</div>
+            </div>
+            <button id="createOfferBtn" onclick="createOffer()" disabled>2. 接続コード作成</button>
+
+            <label for="offer">3. 接続コード（相手に送信）:</label>
+            <textarea id="offer" readonly placeholder="ここに接続コードが表示されます"></textarea>
+            <small>このコードをコピーするか下のQRコードを相手にスキャンしてもらってください。ページ更新で無効になります。</small>
+            <div class="qr-wrapper">
+                <div id="qrOffer" class="qr">
+                    <div>QRコード表示エリア</div>
+                </div>
+            </div>
+
+            <label for="answer">4. 相手の返答コードを入力:</label>
+            <textarea id="answer" placeholder="相手から受け取った返答コードを貼り付け or QRスキャン"></textarea>
+            <button id="connectBtn" onclick="receiveAnswer()" disabled>5. 接続完了 & 送信開始</button>
+        </div>
+
+        <!-- 受信者UI -->
+        <div id="receiverUI" style="display:none">
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+            <label for="remoteOffer">1. 相手の接続コードを入力:</label>
+            <textarea id="remoteOffer" placeholder="相手から受け取った接続コードを貼り付け or QRスキャン"></textarea>
+            <button id="receiveOfferBtn" onclick="receiveOffer()" disabled>2. 接続 & 返答コード作成</button>
+
+            <label for="localAnswer">3. 返答コード（相手に送信）:</label>
+            <textarea id="localAnswer" readonly placeholder="ここに返答コードが表示されます"></textarea>
+            <small>このコードをコピーするか下のQRコードを相手にスキャンしてもらってください。</small>
+            <div class="qr-wrapper">
+                <div id="qrAnswerReceiver" class="qr">
+                    <div>QRコード表示エリア</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 共通UI: 進捗とステータス -->
+        <div id="progressContainer" class="progress-container">
+            <div id="progressBar" class="progress-bar">0%</div>
+        </div>
+        <div id="status" class="status">モードを選択してください</div>
+    </div>
+
+    <!-- QRコード生成ライブラリ -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <!-- アプリケーションロジック -->
+    <script>
+        // --- グローバル変数 ---
+        let pc; let dc; let filesToSend = []; let fileMetadata = [];
+        let currentFileIndex = 0; let currentFileSentBytes = 0; let totalSentBytes = 0; let totalTransferSize = 0;
+        let isSending = false; let isReceiving = false;
+        let receivedBuffers = []; let currentReceivingFile = null; let receivedBytes = 0;
+
+        // --- 定数 ---
+        const CHUNK_SIZE = 64 * 1024; const BUFFER_THRESHOLD = CHUNK_SIZE * 16; const QR_MAX_LENGTH = 2953;
+
+        // --- UI要素のキャッシュ ---
+        const senderUI = document.getElementById("senderUI"); const receiverUI = document.getElementById("receiverUI");
+        const fileInput = document.getElementById("fileInput"); const fileListEl = document.getElementById("fileList");
+        const createOfferBtn = document.getElementById("createOfferBtn"); const offerTextarea = document.getElementById("offer");
+        const qrOfferDiv = document.getElementById("qrOffer"); const answerTextarea = document.getElementById("answer");
+        const connectBtn = document.getElementById("connectBtn"); const remoteOfferTextarea = document.getElementById("remoteOffer");
+        const receiveOfferBtn = document.getElementById("receiveOfferBtn"); const localAnswerTextarea = document.getElementById("localAnswer");
+        const qrAnswerReceiverDiv = document.getElementById("qrAnswerReceiver"); const progressContainer = document.getElementById("progressContainer");
+        const progressBar = document.getElementById("progressBar"); const statusDiv = document.getElementById("status");
+        const senderBtn = document.getElementById("senderBtn"); const receiverBtn = document.getElementById("receiverBtn");
+
+        // --- モード切替 ---
+        function switchMode(mode) {
+            senderUI.style.display = mode === 'sender' ? "block" : "none"; receiverUI.style.display = mode === 'receiver' ? "block" : "none";
+            senderBtn.disabled = mode === 'sender'; receiverBtn.disabled = mode === 'receiver';
+            resetState(false); setStatus(mode === 'sender' ? '1. 送信するファイルを選択してください' : '1. 相手の接続コードを入力してください');
+            progressBar.className = 'progress-bar';
+        }
+
+        // --- 状態リセット ---
+        function resetState(keepFiles = false) {
+            console.log("Resetting state" + (keepFiles ? " (keeping files)" : ""));
+            if (pc) { pc.close(); pc = null; } if (dc) { dc.close(); dc = null; }
+            if (!keepFiles) { filesToSend = []; fileInput.value = ''; }
+            fileMetadata = []; currentFileIndex = 0; currentFileSentBytes = 0; totalSentBytes = 0; totalTransferSize = 0;
+            isSending = false; isReceiving = false; receivedBuffers = []; currentReceivingFile = null; receivedBytes = 0;
+            clearTextFieldsAndQR(); updateFileList(); progressContainer.style.display = 'none';
+            progressBar.style.width = '0%'; progressBar.textContent = '0%'; progressBar.className = 'progress-bar'; setStatus('');
+            createOfferBtn.disabled = filesToSend.length === 0; connectBtn.disabled = true; receiveOfferBtn.disabled = true;
+            fileInput.disabled = false; answerTextarea.disabled = true; remoteOfferTextarea.disabled = false;
+            answerTextarea.value = ''; remoteOfferTextarea.value = ''; senderBtn.disabled = false; receiverBtn.disabled = false;
+        }
+        function clearTextFieldsAndQR() {
+            offerTextarea.value = ""; answerTextarea.value = ""; remoteOfferTextarea.value = ""; localAnswerTextarea.value = "";
+            qrOfferDiv.innerHTML = '<div>QRコード表示エリア</div>'; qrAnswerReceiverDiv.innerHTML = '<div>QRコード表示エリア</div>';
+        }
+
+        // --- ステータス表示更新 ---
+        function setStatus(message, type = 'info') {
+            console.log(`Status (${type}):`, message); statusDiv.innerText = message;
+            statusDiv.className = 'status'; // Reset class
+            if (type === 'error') statusDiv.classList.add('error'); else if (type === 'success') statusDiv.classList.add('success');
+        }
+
+        // --- PeerConnection初期化 & イベント設定 ---
+        function initPeerConnection() {
+            if (pc) { console.log("Closing existing PC"); pc.close(); }
+            try {
+                pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] });
+                setupPeerConnectionEvents(); return true;
+            } catch (e) { console.error("PC create error:", e); setStatus("エラー: PeerConnection作成失敗", "error"); return false; }
+        }
+        function setupPeerConnectionEvents() {
+            pc.onicecandidate = handleIceCandidate; pc.onicecandidateerror = handleIceCandidateError;
+            pc.oniceconnectionstatechange = handleIceConnectionStateChange; pc.onconnectionstatechange = handleConnectionStateChange;
+            pc.ondatachannel = handleDataChannel;
+        }
+
+        // --- ICE Candidate 関連 ---
+        function handleIceCandidate(event) {
+            if (!event.candidate) {
+                console.log("ICE gathering finished."); if (!pc || !pc.localDescription) { console.warn("Local desc not set."); return; }
+                const sdp = JSON.stringify(pc.localDescription);
+                if (pc.localDescription.type === 'offer') { offerTextarea.value = sdp; generateQRCodeSVG(sdp, "qrOffer"); setStatus('3. 接続コードを相手に送り、4. 返答コードを入力'); answerTextarea.disabled = false; }
+                else if (pc.localDescription.type === 'answer') { localAnswerTextarea.value = sdp; generateQRCodeSVG(sdp, "qrAnswerReceiver"); setStatus('3. 返答コードを相手に送り、接続完了を待機'); }
+            }
+        }
+        function handleIceCandidateError(event) { console.error("ICE Error:", event); setStatus(`エラー: ICE候補収集失敗 (コード: ${event.errorCode}, ${event.errorText})`, "error"); }
+
+        // --- 接続状態変更関連 (修正箇所) ---
+        function handleIceConnectionStateChange() {
+            if (!pc) return; console.log("ICE State:", pc.iceConnectionState);
+            switch (pc.iceConnectionState) {
+                case 'checking': setStatus('接続確認中...'); break;
+                case 'connected': setStatus('ピア接続済み'); break;
+                case 'completed': setStatus('ピア接続安定'); break;
+                case 'disconnected': setStatus('ピア接続が切れました。', 'error'); break; // ★ 自動リセットしない
+                case 'failed':
+                    setStatus('ピア接続に失敗しました。ネットワーク等確認後、再試行してください。', 'error');
+                    // resetState(true); // ★ 自動リセットをコメントアウト
+                    // 失敗した場合、手動で再試行できるようにUIを調整
+                    if (isReceiving && receiveOfferBtn) receiveOfferBtn.disabled = false;
+                    if (isReceiving && remoteOfferTextarea) remoteOfferTextarea.disabled = false;
+                    if (isSending && connectBtn) connectBtn.disabled = (answerTextarea.value.trim().length === 0); // answerがあれば接続ボタンを有効にする可能性
+                    if (isSending && answerTextarea) answerTextarea.disabled = false; // answer入力可能に
+                    break;
+                case 'closed':
+                    setStatus('ピア接続が閉じられました。');
+                    // closed は正常終了の場合もあるので、安易にリセットしない
+                    // 必要であれば、他の状態を見てリセットを判断
+                    break;
+            }
+        }
+        function handleConnectionStateChange() {
+            if (!pc) return; console.log("Connection State:", pc.connectionState);
+            switch (pc.connectionState) {
+                case 'connecting': setStatus('接続中...'); break;
+                case 'connected': if (dc && dc.readyState === 'open') setStatus('データチャネル接続完了', 'success'); else setStatus('ピア接続完了、DC待機中...'); break;
+                case 'failed':
+                    setStatus('接続に失敗しました。ページをリロードするか、再度試してください。', 'error');
+                    // resetState(true); // ★ 自動リセットをコメントアウト
+                    // 失敗した場合、手動で再試行できるようにUIを調整
+                    if (isReceiving && receiveOfferBtn) receiveOfferBtn.disabled = false;
+                    if (isReceiving && remoteOfferTextarea) remoteOfferTextarea.disabled = false;
+                    if (isSending && connectBtn) connectBtn.disabled = (answerTextarea.value.trim().length === 0);
+                    if (isSending && answerTextarea) answerTextarea.disabled = false;
+                    break;
+                case 'disconnected': setStatus('接続が切れました。', 'error'); break; // ★ 自動リセットしない
+                case 'closed':
+                    setStatus('接続が閉じられました。');
+                    // closed は正常終了の場合もある
+                    break;
+            }
+        }
+        // --- ここまで修正 ---
+
+        // --- DataChannel関連 (修正箇所) ---
+        function setupDataChannel() {
+            if (!dc) return; dc.binaryType = 'arraybuffer';
+            dc.onopen = handleDataChannelOpen; dc.onclose = handleDataChannelClose;
+            dc.onerror = handleDataChannelError; dc.onmessage = handleMessage;
+            dc.bufferedAmountLowThreshold = BUFFER_THRESHOLD / 2; dc.onbufferedamountlow = handleBufferedAmountLow;
+        }
+        function handleDataChannel(event) { console.log("DC received"); dc = event.channel; setupDataChannel(); setStatus('相手からのDC接続受付'); }
+        function handleDataChannelOpen() {
+            console.log("DC opened"); progressContainer.style.display = 'block'; progressBar.className = `progress-bar ${isSending ? 'sending' : 'receiving'}`;
+            if (isSending) { setStatus('DC接続完了、送信開始', 'success'); sendFileMetadata(); }
+            else if (isReceiving) { setStatus('DC接続完了、受信待機中', 'success'); }
+        }
+        function handleDataChannelClose() {
+            console.log("DC closed");
+            const isIncomplete = (isSending || isReceiving) && totalSentBytes < totalTransferSize && totalTransferSize > 0;
+            if (isIncomplete) setStatus(`DC切断、${isSending ? '転送' : '受信'}未完了`, 'error');
+            else if ((isSending || isReceiving) && !statusDiv.innerText.includes('完了')) setStatus('DC切断');
+            isSending = false; isReceiving = false; // 状態リセット
+        }
+        function handleDataChannelError(error) {
+            console.error("DC error:", error);
+            setStatus(`データチャネルエラー: ${error.message || '不明'}`, 'error');
+            // resetState(true); // ★ 自動リセットをコメントアウト
+            // エラー発生時も手動で再試行可能にする
+            if (isReceiving && receiveOfferBtn) receiveOfferBtn.disabled = false;
+            if (isReceiving && remoteOfferTextarea) remoteOfferTextarea.disabled = false;
+            if (isSending && createOfferBtn) createOfferBtn.disabled = (filesToSend.length === 0); // ファイルあればOffer再作成可能に
+            if (isSending && fileInput) fileInput.disabled = false; // ファイル選択も可能に
+        }
+        // --- ここまで修正 ---
+        function handleBufferedAmountLow() { /* Handled in waitForBufferToDrain */ }
+
+        // --- ファイル処理 ---
+        fileInput.addEventListener("change", (event) => {
+            const newFiles = Array.from(event.target.files); const currentFileNames = new Set(filesToSend.map(f => f.name)); let added = false;
+            newFiles.forEach(file => { if (!currentFileNames.has(file.name)) { filesToSend.push(file); added = true; } });
+            if (added) updateFileList(); createOfferBtn.disabled = filesToSend.length === 0; setStatus(`${filesToSend.length}個のファイル選択中`);
+        });
+        function updateFileList() {
+            if (filesToSend.length === 0) { fileListEl.innerHTML = `<div class="file-list-empty">ファイル未選択</div>`; createOfferBtn.disabled = true; return; }
+            fileListEl.innerHTML = ""; let totalSize = 0;
+            filesToSend.forEach((file, index) => {
+                const div = document.createElement("div"); const span = document.createElement('span'); span.textContent = `${file.name} (${formatBytes(file.size)})`; span.title = file.name; div.appendChild(span);
+                if (!isSending && !isReceiving) { // ★ 送受信中でなければ削除ボタン表示
+                    const btn = document.createElement("button"); btn.textContent = "×"; btn.title = `削除`;
+                    btn.onclick = (e) => { e.stopPropagation(); filesToSend.splice(index, 1); updateFileList(); createOfferBtn.disabled = filesToSend.length === 0; setStatus(`${filesToSend.length}個のファイル選択中`); };
+                    div.appendChild(btn);
+                }
+                fileListEl.appendChild(div); totalSize += file.size;
+            });
+            const totalDiv = document.createElement("div"); totalDiv.className = 'file-list-total'; totalDiv.textContent = `合計: ${filesToSend.length}ファイル, ${formatBytes(totalSize)}`; fileListEl.appendChild(totalDiv);
+            createOfferBtn.disabled = filesToSend.length === 0 || isSending || isReceiving; // ★ 送受信中はOffer作成不可
+        }
+
+        // --- 送信開始 (Offer作成) ---
+        function createOffer() {
+            if (filesToSend.length === 0) { setStatus("送信ファイルを選択してください", "error"); return; }
+            setStatus('接続準備中...'); resetState(true); isSending = true; isReceiving = false;
+            if (!initPeerConnection()) return;
+            fileMetadata = filesToSend.map(f => ({ name: f.name, size: f.size })); totalTransferSize = fileMetadata.reduce((sum, meta) => sum + (meta.size || 0), 0);
+            try { dc = pc.createDataChannel("fileTransferChannel", { ordered: true }); setupDataChannel(); } catch (e) { console.error("DC create error:", e); setStatus(`エラー: DC作成失敗: ${e.message}`, "error"); resetState(true); return; }
+            pc.createOffer()
+                .then(offer => pc.setLocalDescription(offer))
+                .then(() => { setStatus('接続コード作成中...'); fileInput.disabled = true; createOfferBtn.disabled = true; updateFileList(); }) // 削除ボタン非表示
+                .catch(e => { console.error("Offer error:", e); setStatus(`オファー作成エラー: ${e.toString()}`, "error"); resetState(true); });
+        }
+
+        // --- 返答受信 (Answer処理) ---
+        function receiveAnswer() {
+            const answerSdp = answerTextarea.value.trim();
+            if (!answerSdp) { setStatus("4. 返答コードを入力してください", "error"); return; }
+            if (!pc || !pc.localDescription || pc.signalingState !== 'have-local-offer') { setStatus('エラー: 内部状態不正。手順2からやり直し', 'error'); return; }
+            try {
+                const answer = JSON.parse(answerSdp); setStatus('返答コード処理、接続試行中...');
+                pc.setRemoteDescription(new RTCSessionDescription(answer))
+                    .then(() => { setStatus('相手情報設定完了、DC接続待機中...'); connectBtn.disabled = true; answerTextarea.disabled = true; })
+                    .catch(e => { console.error("Set remote desc error:", e); setStatus(`返答コード処理エラー: ${e.toString()}`, 'error'); connectBtn.disabled = false; answerTextarea.disabled = false; }); // ★ エラー時も入力可能に
+            } catch (e) { setStatus("無効な返答コード形式", "error"); console.error("Invalid answer SDP:", e); }
+        }
+
+        // --- 接続要求受信 (Offer処理) ---
+        function receiveOffer() {
+            const offerSdp = remoteOfferTextarea.value.trim();
+            if (!offerSdp) { setStatus("1. 接続コードを入力してください", "error"); return; }
+            setStatus('接続コード処理中...'); resetState(false); isReceiving = true; isSending = false;
+            if (!initPeerConnection()) return;
+            if (pc.signalingState !== 'stable') console.warn('PC state not stable:', pc.signalingState);
+            try {
+                const offer = JSON.parse(offerSdp);
+                pc.setRemoteDescription(new RTCSessionDescription(offer))
+                    .then(() => { setStatus('相手情報受付完了、返答コード作成中...'); return pc.createAnswer(); })
+                    .then(answer => pc.setLocalDescription(answer))
+                    .then(() => { setStatus('返答コード作成中...'); receiveOfferBtn.disabled = true; remoteOfferTextarea.disabled = true; }) // ★ 成功したら無効化
+                    .catch(e => { console.error("Offer/Answer error:", e); setStatus(`接続/返答エラー: ${e.toString()}`, 'error'); resetState(false); }); // ★ エラーならリセット
+            } catch (e) { setStatus("無効な接続コード形式", "error"); console.error("Invalid offer SDP:", e); resetState(false); } // ★ エラーならリセット
+        }
+
+        // --- ファイル送信ロジック ---
+        function sendFileMetadata() { /* 省略 (変更なし) */
+            if (!dc || dc.readyState !== 'open') { setStatus('エラー: DC未接続、メタデータ送信不可', 'error'); resetState(true); return; }
+            if (fileMetadata.length === 0) { setStatus("送信ファイルなし", "error"); return; }
+            const metadataMessage = JSON.stringify({ type: 'metadata', files: fileMetadata }); console.log("Sending metadata:", fileMetadata);
+            try { dc.send(metadataMessage); setTimeout(sendNextFile, 100); } catch (e) { console.error("Metadata send error:", e); setStatus(`エラー: メタデータ送信失敗: ${e.message}`, 'error'); resetState(true); }
+        }
+        function sendNextFile() { /* 省略 (変更なし) */
+            if (currentFileIndex >= filesToSend.length) { sendTransferComplete(); return; }
+            const file = filesToSend[currentFileIndex]; const fileMeta = fileMetadata[currentFileIndex]; console.log(`Sending file ${currentFileIndex + 1}/${filesToSend.length}: ${file.name}`); setStatus(`ファイル ${currentFileIndex + 1}/${filesToSend.length} (${file.name}) 送信準備中...`); updateOverallProgress();
+            const startMsg = JSON.stringify({ type: 'file_start', name: fileMeta.name, size: fileMeta.size });
+            try { if (dc.readyState !== 'open') throw new Error("DC closed"); dc.send(startMsg); currentFileSentBytes = 0; sendNextChunk(file); } catch (e) { console.error(`File start send error (${file.name}):`, e); setStatus(`エラー: 送信開始失敗 (${file.name}): ${e.message}`, 'error'); resetState(true); }
+        }
+        async function sendNextChunk(file) { /* 省略 (変更なし) */
+            if (!isSending || !dc || dc.readyState !== 'open') { if (isSending) setStatus('送信中断', 'error'); return; }
+            const offset = currentFileSentBytes;
+            if (offset >= file.size) {
+                console.log(`File ${file.name} sent.`); setStatus(`ファイル ${file.name} 送信完了`);
+                const endMsg = JSON.stringify({ type: 'file_end', name: file.name });
+                try { if (dc.readyState !== 'open') throw new Error("DC closed"); dc.send(endMsg); currentFileIndex++; await new Promise(resolve => setTimeout(resolve, 50)); sendNextFile(); } catch (e) { console.error(`File end send error (${file.name}):`, e); setStatus(`エラー: 送信完了通知失敗 (${file.name}): ${e.message}`, 'error'); resetState(true); }
+                return;
+            }
+            try { await waitForBufferToDrain(); } catch (error) { console.error("Buffer drain error:", error); setStatus(`送信エラー: ${error.message}`, 'error'); isSending = false; return; }
+            const end = Math.min(offset + CHUNK_SIZE, file.size); const chunk = file.slice(offset, end);
+            try {
+                const arrayBuffer = await chunk.arrayBuffer();
+                if (!isSending || dc.readyState !== 'open') { if (isSending) setStatus('送信中断', 'error'); return; }
+                dc.send(arrayBuffer); currentFileSentBytes += arrayBuffer.byteLength; totalSentBytes += arrayBuffer.byteLength; updateOverallProgress();
+                requestAnimationFrame(() => sendNextChunk(file));
+            } catch (error) { console.error("Chunk read/send error:", error); setStatus(`ファイル読込/送信エラー: ${error.toString()}`, 'error'); isSending = false; resetState(true); }
+        }
+        function waitForBufferToDrain() { /* 省略 (変更なし) */
+            return new Promise((resolve, reject) => {
+                if (!dc || dc.readyState !== 'open') return reject(new Error("DC未接続"));
+                if (dc.bufferedAmount < BUFFER_THRESHOLD) { resolve(); return; }
+                console.log(`Buffer high: ${dc.bufferedAmount} bytes.`); setStatus(`送信バッファ高負荷 (${formatBytes(dc.bufferedAmount)})`);
+                const timeout = 60000; let listener;
+                let timeoutId = setTimeout(() => { if (listener) dc.removeEventListener('bufferedamountlow', listener); reject(new Error("送信バッファ待機タイムアウト")); }, timeout);
+                listener = () => { clearTimeout(timeoutId); dc.removeEventListener('bufferedamountlow', listener); console.log(`Buffer low: ${dc.bufferedAmount} bytes.`); resolve(); };
+                dc.addEventListener('bufferedamountlow', listener, { once: true });
+            });
+        }
+        function sendTransferComplete() { /* 省略 (変更なし) */
+            if (!dc || dc.readyState !== 'open') { console.warn("Cannot send transfer_complete, DC not open."); return; }
+            const completeMsg = JSON.stringify({ type: 'transfer_complete' });
+            try { dc.send(completeMsg); setStatus(`全 ${filesToSend.length} ファイル送信完了 (${formatBytes(totalTransferSize)})`, 'success'); progressBar.classList.add('complete'); console.log("All files sent."); isSending = false; fileInput.disabled = false; createOfferBtn.disabled = false; updateFileList(); } catch (e) { console.error("Complete send error:", e); setStatus(`エラー: 完了通知送信失敗: ${e.message}`, 'error'); }
+        }
+
+        // --- ファイル受信ロジック ---
+        function handleMessage(event) { /* 省略 (変更なし) */
+            if (typeof event.data === 'string') {
+                try {
+                    const message = JSON.parse(event.data); console.log("Received msg:", message);
+                    switch (message.type) {
+                        case 'metadata': handleMetadataMessage(message); break;
+                        case 'file_start': handleFileStartMessage(message); break;
+                        case 'file_end': handleFileEndMessage(message); break;
+                        case 'transfer_complete': handleTransferCompleteMessage(); break;
+                        default: console.warn("Unknown msg type:", message.type);
+                    }
+                } catch (error) { console.error("Msg parse error:", error, event.data); setStatus("受信データエラー(形式不正)", "error"); }
+            } else if (event.data instanceof ArrayBuffer) { handleFileChunk(event.data); }
+            else { console.warn("Unknown data type:", typeof event.data); setStatus("不明データ受信", "error"); }
+        }
+        function handleMetadataMessage(message) { /* 省略 (変更なし) */
+            fileMetadata = message.files || []; totalTransferSize = fileMetadata.reduce((sum, meta) => sum + (meta.size || 0), 0); currentFileIndex = 0; totalSentBytes = 0;
+            setStatus(`ファイル情報受信: ${fileMetadata.length}ファイル、合計 ${formatBytes(totalTransferSize)}`); progressContainer.style.display = 'block'; progressBar.className = 'progress-bar receiving'; updateOverallProgress(true);
+        }
+        function handleFileStartMessage(message) { /* 省略 (変更なし) */
+            currentReceivingFile = fileMetadata.find(f => f.name === message.name); if (!currentReceivingFile) { console.error("Unknown file start:", message.name); setStatus(`エラー: 不明ファイル (${message.name})`, "error"); return; }
+            currentFileIndex = fileMetadata.findIndex(f => f.name === message.name); receivedBuffers = []; receivedBytes = 0; setStatus(`ファイル ${currentFileIndex + 1}/${fileMetadata.length} (${currentReceivingFile.name}) 受信開始...`); updateOverallProgress(true);
+        }
+        function handleFileEndMessage(message) { /* 省略 (変更なし) */
+            if (!currentReceivingFile || currentReceivingFile.name !== message.name) { console.warn("Unexpected file end:", message.name); return; }
+            const expectedSize = currentReceivingFile.size;
+            if (receivedBytes !== expectedSize) { console.warn(`Size mismatch (${message.name}): ${receivedBytes}/${expectedSize}`); setStatus(`警告: ${message.name} サイズ不一致 (${formatBytes(receivedBytes)}/${formatBytes(expectedSize)})`, "error"); }
+            else { setStatus(`ファイル ${message.name} (${formatBytes(receivedBytes)}) 受信完了、DL準備中...`); }
+            createAndDownloadBlob(receivedBuffers, currentReceivingFile.name); // Async download
+            receivedBuffers = []; currentReceivingFile = null; updateOverallProgress(true);
+        }
+        function handleTransferCompleteMessage() { /* 省略 (変更なし) */
+            const sizeMatch = totalSentBytes === totalTransferSize; const msg = `全 ${fileMetadata.length} ファイル受信完了 (${formatBytes(totalTransferSize)})` + (sizeMatch ? "" : " サイズ不一致あり");
+            setStatus(msg, sizeMatch ? 'success' : 'error'); progressBar.classList.add('complete'); console.log("Transfer complete signal received."); isReceiving = false;
+        }
+        function handleFileChunk(chunk) { /* 省略 (変更なし) */
+            if (!currentReceivingFile) { console.warn("Chunk received but no file active."); return; }
+            receivedBuffers.push(chunk); const chunkSize = chunk.byteLength; receivedBytes += chunkSize; totalSentBytes += chunkSize; updateOverallProgress(true);
+        }
+
+        // --- Blob作成とダウンロード ---
+        async function createAndDownloadBlob(buffers, filename) { /* 省略 (変更なし) */
+            setStatus(`ファイル ${filename} 処理中...`);
+            try {
+                const blob = await new Promise((resolve, reject) => { try { resolve(new Blob(buffers, { type: 'application/octet-stream' })); } catch (e) { reject(e); } });
+                setStatus(`${filename} (${formatBytes(blob.size)}) ダウンロード中...`); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+                setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); console.log(`Blob URL revoked: ${filename}`); }, 100);
+            } catch (e) { console.error(`Blob process error (${filename}):`, e); setStatus(`エラー: ${filename} DL処理失敗: ${e.message}`, "error"); }
+        }
+
+        // --- 進捗更新 ---
+        function updateOverallProgress(isReceivingSide = false) { /* 省略 (変更なし) */
+            if (totalTransferSize === 0) { progressBar.style.width = '0%'; progressBar.textContent = '0%'; return; }
+            const percent = Math.min(100, (totalSentBytes / totalTransferSize * 100)).toFixed(1); progressBar.style.width = `${percent}%`; progressBar.textContent = `${percent}%`;
+            const currentStatus = statusDiv.innerText; if (currentStatus.includes("速度調整中") || statusDiv.classList.contains('error')) return;
+            let currentFileName = ''; let fileIndexToShow = -1;
+            if (isSending && currentFileIndex < fileMetadata.length) { currentFileName = fileMetadata[currentFileIndex].name; fileIndexToShow = currentFileIndex; }
+            else if (isReceivingSide && currentReceivingFile) { currentFileName = currentReceivingFile.name; fileIndexToShow = currentFileIndex; }
+            if (currentFileName && fileIndexToShow !== -1 && !currentStatus.includes("完了")) { const action = isReceivingSide ? "受信" : "送信"; const fileProgress = fileMetadata.length > 1 ? ` (${fileIndexToShow + 1}/${fileMetadata.length})` : ''; setStatus(`${action}中: ${currentFileName}${fileProgress} - ${formatBytes(totalSentBytes)}/${formatBytes(totalTransferSize)}`); }
+            else if (totalSentBytes > 0 && !currentStatus.includes("完了")) { setStatus(`全体進捗: ${formatBytes(totalSentBytes)}/${formatBytes(totalTransferSize)}`); }
+        }
+
+        // --- QRコード生成 ---
+        function generateQRCodeSVG(text, targetId) { /* 省略 (変更なし) */
+            const target = document.getElementById(targetId); target.innerHTML = '';
+            if (!text) { target.innerHTML = '<div class="qr-error">コードがありません</div>'; return; }
+            try {
+                if (text.length > QR_MAX_LENGTH) { console.warn("QR data too large:", text.length); target.innerHTML = `<div class="qr-error">コード過大(${text.length}バイト)。テキストコピー推奨。</div>`; if (targetId === 'qrOffer') offerTextarea.select(); else if (targetId === 'qrAnswerReceiver') localAnswerTextarea.select(); return; }
+                const qr = qrcode(0, 'L'); qr.addData(text); qr.make(); const svgTag = qr.createSvgTag({ scalable: true, margin: 1 }); target.innerHTML = svgTag;
+            } catch (e) { console.error("QR gen error:", e); target.innerHTML = `<div class="qr-error">QR生成エラー: ${e.message}. テキストコピー推奨。</div>`; if (targetId === 'qrOffer') offerTextarea.select(); else if (targetId === 'qrAnswerReceiver') localAnswerTextarea.select(); }
+        }
+
+        // --- ユーティリティ ---
+        function formatBytes(bytes, decimals = 1) { /* 省略 (変更なし) */
+            if (bytes === 0 || !bytes || isNaN(bytes)) return '0 Bytes'; const k = 1024; const dm = decimals < 0 ? 0 : decimals; const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']; const i = Math.max(0, Math.floor(Math.log(bytes) / Math.log(k))); const sizeIndex = Math.min(i, sizes.length - 1); return parseFloat((bytes / Math.pow(k, sizeIndex)).toFixed(dm)) + ' ' + sizes[sizeIndex];
+        }
+
+        // --- UI イベントリスナー ---
+        remoteOfferTextarea.addEventListener('input', () => { receiveOfferBtn.disabled = remoteOfferTextarea.value.trim().length === 0 || isReceiving; });
+        answerTextarea.addEventListener('input', () => { connectBtn.disabled = answerTextarea.value.trim().length === 0 || !isSending || !pc || pc.signalingState !== 'have-local-offer' || (pc.connectionState !== 'new' && pc.connectionState !== 'connecting' && pc.connectionState !== 'failed') }); //★ 接続試行中/失敗時も有効にする
+
+        // --- 初期化処理 ---
+        document.addEventListener('DOMContentLoaded', () => { resetState(false); setStatus("モード（送信または受信）を選択してください"); });
+    </script>
+
+    <!-- フローティングロゴ -->
+    <a href="scan.html" class="floating-logo2" target="_blank" rel="noopener noreferrer" title="QRコードスキャナーを開く">
+        <div class="logo-container">
+            <span class="logo-text">QRコードスキャン</span>
+        </div>
+    </a>
+</body>
+
+</html>

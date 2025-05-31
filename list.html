@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ListBridge - つながるリストで、サクッと買い物。</title>
+    <style>
+        /* Reset & Basic Styles (変更なし) */
+        :root {
+            --primary-color: #4CAF50;
+            --secondary-color: #FF9800;
+            --accent-color: #2196F3;
+            --background-light: #f8f9fa;
+            --text-light: #212529;
+            --card-light: #ffffff;
+            --border-light: #dee2e6;
+            --background-dark: #212529;
+            --text-dark: #f8f9fa;
+            --card-dark: #343a40;
+            --border-dark: #495057;
+            --checked-opacity: 0.6;
+            --category-food: #FFC107;
+            --category-household: #03A9F4;
+            --category-toiletries: #E91E63;
+            --category-drinks: #8BC34A;
+            --category-other: #9E9E9E;
+            --body-bg: var(--background-light);
+            --text-color: var(--text-light);
+            --card-bg: var(--card-light);
+            --border-color: var(--border-light);
+        }
+
+        .dark-mode {
+            --body-bg: var(--background-dark);
+            --text-color: var(--text-dark);
+            --card-bg: var(--card-dark);
+            --border-color: var(--border-dark);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--body-bg);
+            color: var(--text-color);
+            line-height: 1.6;
+            transition: background-color 0.3s, color 0.3s;
+            padding: 15px;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        h1+p {
+            text-align: center;
+            margin-bottom: 25px;
+            font-style: italic;
+            color: var(--secondary-color);
+        }
+
+        h2 {
+            margin-top: 25px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 5px;
+            color: var(--primary-color);
+        }
+
+        header {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+            min-height: 50px;
+            position: relative;
+            transition: border-color 0.3s;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        #invite-btn {
+            background-color: var(--accent-color);
+            padding: 8px 14px;
+            font-size: 0.95em;
+        }
+
+        #invite-btn:hover {
+            background-color: #1e88e5;
+        }
+
+        /* --- Add Item Form Styles (変更なし) --- */
+        .add-item-form {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px 15px;
+            margin-bottom: 25px;
+            align-items: end;
+        }
+
+        .form-main-input {
+            grid-column: 1 / 2;
+        }
+
+        .form-details {
+            grid-column: 1 / 2;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+        }
+
+        .form-add-button {
+            grid-column: 2 / 3;
+            grid-row: 1 / 3;
+            height: 100%;
+            min-height: 84px;
+            align-self: stretch;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select,
+        input[type="file"]
+
+        /* Add style for file input if needed, though it's hidden */
+            {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            background-color: var(--body-bg);
+            color: var(--text-color);
+            border-radius: 5px;
+            font-size: 1em;
+            transition: border-color 0.2s, background-color 0.2s, color 0.2s;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3);
+        }
+
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+            background-position: calc(100% - 20px) calc(1em + 2px), calc(100% - 15px) calc(1em + 2px);
+            background-size: 5px 5px, 5px 5px;
+            background-repeat: no-repeat;
+            padding-right: 40px;
+            cursor: pointer;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.2s, opacity 0.2s;
+            white-space: nowrap;
+        }
+
+        button:hover {
+            opacity: 0.85;
+        }
+
+        button:active {
+            opacity: 1;
+            transform: translateY(1px);
+        }
+
+        button:disabled {
+            background-color: #9E9E9E;
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .delete-btn {
+            background-color: #f44336;
+            color: white;
+            padding: 4px 9px;
+            font-size: 0.8em;
+            margin-left: 10px;
+            line-height: 1;
+            opacity: 0.8;
+            border-radius: 4px;
+        }
+
+        .delete-btn:hover {
+            opacity: 1;
+            background-color: #d32f2f;
+        }
+
+        /* --- Shopping List Styles (変更なし) --- */
+        .shopping-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 10px;
+        }
+
+        .shopping-list li {
+            background-color: var(--card-bg);
+            margin-bottom: 10px;
+            padding: 12px 15px;
+            border-radius: 5px;
+            border-left: 6px solid var(--category-other);
+            display: flex;
+            align-items: center;
+            transition: background-color 0.3s, border-color 0.3s, opacity 0.4s;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+
+        /* (省略: .shopping-list li のカテゴリ色、チェックボックスなどのスタイルは変更なし) */
+        .shopping-list li:last-child {
+            margin-bottom: 0;
+        }
+
+        .shopping-list li.category-food {
+            border-left-color: var(--category-food);
+        }
+
+        .shopping-list li.category-household {
+            border-left-color: var(--category-household);
+        }
+
+        .shopping-list li.category-toiletries {
+            border-left-color: var(--category-toiletries);
+        }
+
+        .shopping-list li.category-drinks {
+            border-left-color: var(--category-drinks);
+        }
+
+        .shopping-list li.category-other {
+            border-left-color: var(--category-other);
+        }
+
+        .shopping-list li input[type="checkbox"] {
+            margin-right: 15px;
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            top: 1px;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        .shopping-list li input[type="checkbox"]:checked {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .shopping-list li input[type="checkbox"]:checked::after {
+            content: '✔';
+            font-size: 14px;
+            color: white;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            line-height: 1;
+        }
+
+        .item-details {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            margin-right: 10px;
+            overflow: hidden;
+        }
+
+        .item-main {
+            display: flex;
+            align-items: baseline;
+            flex-wrap: wrap;
+        }
+
+        .item-name {
+            font-weight: 500;
+            margin-right: 8px;
+            word-break: break-word;
+        }
+
+        .item-quantity {
+            font-size: 0.9em;
+            color: var(--secondary-color);
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .item-notes {
+            font-size: 0.85em;
+            color: gray;
+            margin-top: 4px;
+            padding-left: 2px;
+            word-break: break-word;
+        }
+
+        .dark-mode .item-notes {
+            color: #adb5bd;
+        }
+
+        #completed-items-list li {
+            opacity: var(--checked-opacity);
+            background-color: var(--body-bg);
+        }
+
+        #completed-items-list .item-name,
+        #completed-items-list .item-quantity,
+        #completed-items-list .item-notes {
+            text-decoration: line-through;
+            text-decoration-thickness: 1px;
+        }
+
+        #completed-items-list .item-name {
+            font-weight: normal;
+        }
+
+        /* --- List Management Styles (復活 & 修正) --- */
+        .list-management {
+            margin-top: 40px;
+            /* 上のリストとの間隔を調整 */
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+            transition: border-color 0.3s;
+        }
+
+        .list-management h2 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            /* ボタンとの間隔を調整 */
+            border-bottom: none;
+            text-align: center;
+            color: var(--text-color);
+            /* ダークモード対応 */
+            font-size: 1.3em;
+            /* 少し大きく */
+        }
+
+        .file-io-section {
+            /* 新しいラッパークラス */
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            /* 入力欄 | 保存 | 読込 */
+            gap: 10px;
+            align-items: center;
+            /* 垂直方向中央揃え */
+        }
+
+        #save-filename {
+            /* grid-column: 1 / 2; */
+            /* Gridがやってくれる */
+            padding: 8px 10px;
+            font-size: 0.95em;
+        }
+
+        #save-list-btn,
+        #load-list-btn {
+            padding: 9px 14px;
+            font-size: 0.95em;
+            flex-shrink: 0;
+            /* サイズ維持 */
+        }
+
+        #save-list-btn {
+            background-color: var(--secondary-color);
+            /* オレンジ */
+            /* grid-column: 2 / 3; */
+        }
+
+        #save-list-btn:hover {
+            background-color: #fb8c00;
+            /* 少し濃いオレンジ */
+        }
+
+        #load-list-btn {
+            background-color: var(--accent-color);
+            /* 青 */
+            /* grid-column: 3 / 4; */
+        }
+
+        #load-list-btn:hover {
+            background-color: #1e88e5;
+            /* 少し濃い青 */
+        }
+
+        /* --- Footer Styles (変更なし) --- */
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+            font-size: 0.9em;
+            color: #6c757d;
+            transition: border-color 0.3s;
+        }
+
+        .dark-mode footer {
+            color: #adb5bd;
+            border-top-color: var(--border-dark);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* --- Modal Styles (変更なし) --- */
+        /* (省略: モーダル関連のCSSは変更なし) */
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0s 0.3s;
+        }
+
+        .modal.visible {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-content {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            margin: auto;
+            padding: 25px 30px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal.visible .modal-content {
+            transform: translateY(0);
+        }
+
+        .close-modal-btn {
+            color: var(--text-color);
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close-modal-btn:hover,
+        .close-modal-btn:focus {
+            opacity: 0.7;
+            text-decoration: none;
+        }
+
+        .modal h2 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            text-align: center;
+            border-bottom: none;
+            color: var(--primary-color);
+        }
+
+        .modal p {
+            margin-bottom: 15px;
+            font-size: 0.95em;
+            text-align: center;
+        }
+
+        #generate-invite-link-btn {
+            display: block;
+            margin: 20px auto;
+            background-color: var(--accent-color);
+        }
+
+        #invite-link-area {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        #invite-link-area p {
+            text-align: left;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        #invite-link-area p:not(:first-child) {
+            margin-top: 15px;
+        }
+
+        #generated-link-input {
+            width: calc(100% - 85px);
+            margin-right: 5px;
+            font-size: 0.9em;
+            background-color: var(--body-bg);
+        }
+
+        #copy-link-btn {
+            width: 80px;
+            font-size: 0.9em;
+            padding: 8px 10px;
+        }
+
+        #qrcode-display {
+            margin-top: 10px;
+            min-height: 150px;
+            display: inline-block;
+        }
+
+        #qrcode-display svg {
+            display: block;
+            background-color: white;
+            padding: 8px;
+            border-radius: 4px;
+            max-width: 100%;
+            height: auto;
+            max-height: 250px;
+        }
+
+
+        /* --- Responsive Adjustments --- */
+        @media (max-width: 650px) {
+
+            /* (省略: 他のレスポンシブスタイルは変更なし) */
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .container {
+                padding: 15px;
+            }
+
+            header {
+                min-height: 45px;
+                margin-bottom: 15px;
+            }
+
+            #invite-btn {
+                padding: 7px 12px;
+                font-size: 0.9em;
+            }
+
+            .add-item-form {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .form-main-input,
+            .form-details,
+            .form-add-button {
+                grid-column: 1 / -1;
+                grid-row: auto;
+            }
+
+            .form-add-button {
+                min-height: auto;
+                padding: 12px;
+            }
+
+            .shopping-list li {
+                padding: 10px 12px;
+            }
+
+            .item-details {
+                margin-right: 5px;
+            }
+
+            .delete-btn {
+                padding: 3px 7px;
+            }
+
+            /* List Management Responsive */
+            .list-management h2 {
+                font-size: 1.2em;
+                margin-bottom: 15px;
+            }
+
+            .file-io-section {
+                grid-template-columns: 1fr;
+                /* 縦積みに変更 */
+                gap: 12px;
+            }
+
+            #save-filename {
+                /* grid-column は不要 */
+                order: 1;
+                /* 順番: 入力欄 */
+            }
+
+            #save-list-btn {
+                order: 2;
+                /* 順番: 保存ボタン */
+            }
+
+            #load-list-btn {
+                order: 3;
+                /* 順番: 読込ボタン */
+            }
+
+            #save-list-btn,
+            #load-list-btn {
+                width: 100%;
+                /* 幅を100%に */
+            }
+
+            /* Modal Responsive */
+            .modal-content {
+                padding: 20px;
+            }
+
+            #generated-link-input {
+                width: calc(100% - 75px);
+            }
+
+            #copy-link-btn {
+                width: 70px;
+            }
+        }
+
+        @media (max-width: 450px) {
+
+            /* (省略: 他のレスポンシブスタイルは変更なし) */
+            header {
+                padding-bottom: 5px;
+            }
+
+            /* List Management Responsive (650pxの設定でカバーされることが多いが微調整は可能) */
+
+            /* Modal Responsive */
+            .modal h2 {
+                font-size: 1.3em;
+            }
+
+            #generated-link-input {
+                width: 100%;
+                margin-bottom: 8px;
+            }
+
+            #copy-link-btn {
+                width: 100%;
+            }
+
+            #qrcode-display {
+                min-height: 120px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>ListBridge</h1>
+        <p>つながるリストで、サクッと買い物。</p>
+
+        <header>
+            <button id="invite-btn">リストを共有</button>
+        </header>
+
+        <!-- Add Item Form (変更なし) -->
+        <form id="add-item-form" class="add-item-form">
+            <div class="form-main-input">
+                <input type="text" id="item-name" placeholder="アイテム名 (例: 牛乳)" required>
+            </div>
+            <div class="form-details">
+                <input type="number" id="item-quantity" placeholder="数量 (例: 2)" min="1">
+                <input type="text" id="item-notes" placeholder="メモ (例: ※安いやつ)">
+                <select id="item-category">
+                    <option value="other">カテゴリ選択</option>
+                    <option value="food">食料品</option>
+                    <option value="drinks">飲料</option>
+                    <option value="household">日用品</option>
+                    <option value="toiletries">洗面用品</option>
+                    <option value="other">その他</option>
+                </select>
+            </div>
+            <button type="submit" class="form-add-button">＋ 追加</button>
+        </form>
+
+        <!-- Shopping Lists (変更なし) -->
+        <div class="list-container">
+            <h2>買い物リスト</h2>
+            <ul id="active-items-list" class="shopping-list"></ul>
+
+            <h2 id="completed-title" class="hidden" style="margin-top: 30px;">完了済み</h2>
+            <ul id="completed-items-list" class="shopping-list hidden"></ul>
+        </div>
+
+        <!-- List Management セクション (復活 & 修正) -->
+        <div class="list-management">
+            <h2>リストの保存 / 読み込み</h2>
+            <div class="file-io-section">
+                <input type="text" id="save-filename" placeholder="ファイル名 (例: shopping_list)">
+                <button id="save-list-btn">💾 保存</button>
+                <button id="load-list-btn">📂 読込</button>
+            </div>
+            <!-- ファイル選択用の非表示要素 -->
+            <input type="file" id="load-file-input" accept=".json" class="hidden">
+        </div>
+
+    </div> <!-- /container -->
+
+    <footer (変更なし)>
+        <p>© 2025 ListBridge by nest app studio</p>
+    </footer>
+
+    <!-- Invite Modal (変更なし) -->
+    <div id="invite-modal" class="modal">
+        <div class="modal-content">
+            <span id="close-modal-btn" class="close-modal-btn" title="閉じる">×</span>
+            <h2>リストを共有</h2>
+            <p>下のボタンを押して、共有用のリンクとQRコードを生成します。</p>
+            <button id="generate-invite-link-btn">招待リンクを生成</button>
+            <div id="invite-link-area" class="hidden">
+                <p><strong>共有リンク:</strong></p>
+                <input type="text" id="generated-link-input" readonly>
+                <button id="copy-link-btn" title="リンクをコピー">コピー</button>
+                <p><strong>QRコード:</strong></p>
+                <div id="qrcode-display"></div>
+                <p style="font-size: 0.8em; color: gray; margin-top: 15px;">
+                    このリンクまたはQRコードを共有相手に送ってください。<br>
+                    リンクを開くと、現在のリストが相手の画面に表示されます。
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- QRコード生成ライブラリの読み込み (変更なし) -->
+    <script src="https://cdn.jsdelivr.net/npm/qr-creator/dist/qr-creator.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const addItemForm = document.getElementById('add-item-form');
+            const itemNameInput = document.getElementById('item-name');
+            const itemQuantityInput = document.getElementById('item-quantity');
+            const itemNotesInput = document.getElementById('item-notes');
+            const itemCategorySelect = document.getElementById('item-category');
+            const activeItemsList = document.getElementById('active-items-list');
+            const completedItemsList = document.getElementById('completed-items-list');
+            const completedTitle = document.getElementById('completed-title');
+            // File I/O Elements (復活 & 追加)
+            const saveFilenameInput = document.getElementById('save-filename');
+            const saveListBtn = document.getElementById('save-list-btn');
+            const loadListBtn = document.getElementById('load-list-btn');
+            const loadFileInput = document.getElementById('load-file-input');
+            // Invite Modal Elements (変更なし)
+            const inviteBtn = document.getElementById('invite-btn');
+            const inviteModal = document.getElementById('invite-modal');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const generateInviteLinkBtn = document.getElementById('generate-invite-link-btn');
+            const inviteLinkArea = document.getElementById('invite-link-area');
+            const generatedLinkInput = document.getElementById('generated-link-input');
+            const copyLinkBtn = document.getElementById('copy-link-btn');
+            const qrcodeDisplay = document.getElementById('qrcode-display');
+
+            // --- State Variables ---
+            let currentList = []; // Initialize empty list
+
+            // --- Initialization ---
+            loadList(); // Load list from URL parameter or start fresh
+
+            // --- Event Listeners ---
+            // Main Page
+            addItemForm.addEventListener('submit', handleAddItem);
+            activeItemsList.addEventListener('change', handleCheckboxChange);
+            completedItemsList.addEventListener('change', handleCheckboxChange);
+            activeItemsList.addEventListener('click', handleDeleteClick);
+            completedItemsList.addEventListener('click', handleDeleteClick);
+            // File I/O (復活 & 追加)
+            saveListBtn.addEventListener('click', handleSaveListToFile);
+            loadListBtn.addEventListener('click', () => loadFileInput.click()); // 読込ボタンで隠しinputをクリック
+            loadFileInput.addEventListener('change', handleFileLoad); // ファイルが選択されたら処理
+            // Invite Modal (変更なし)
+            inviteBtn.addEventListener('click', openInviteModal);
+            closeModalBtn.addEventListener('click', closeInviteModal);
+            generateInviteLinkBtn.addEventListener('click', generateInviteLinkAndQR);
+            copyLinkBtn.addEventListener('click', copyGeneratedLink);
+            // Close modal if clicked outside content
+            inviteModal.addEventListener('click', (e) => {
+                if (e.target === inviteModal) {
+                    closeInviteModal();
+                }
+            });
+
+            // --- Core List Functions (変更なし、自動保存なし) ---
+            function handleAddItem(e) {
+                e.preventDefault();
+                const name = itemNameInput.value.trim();
+                if (!name) {
+                    alert('アイテム名を入力してください。');
+                    itemNameInput.focus();
+                    return;
+                }
+                const newItem = { id: Date.now(), name: name, quantity: itemQuantityInput.value.trim(), notes: itemNotesInput.value.trim(), category: itemCategorySelect.value || 'other', checked: false };
+                currentList.push(newItem);
+                renderList();
+                // 自動保存はしない
+                addItemForm.reset();
+                itemCategorySelect.value = 'other';
+                itemNameInput.focus();
+            }
+
+            function handleCheckboxChange(e) {
+                if (e.target.type === 'checkbox') {
+                    const listItem = e.target.closest('li');
+                    if (!listItem) return;
+                    const itemId = parseInt(listItem.dataset.id);
+                    const itemIndex = currentList.findIndex(item => item.id === itemId);
+                    if (itemIndex > -1) {
+                        currentList[itemIndex].checked = e.target.checked;
+                        renderList();
+                        // 自動保存はしない
+                    } else {
+                        console.error("Item not found for checking:", itemId);
+                    }
+                }
+            }
+
+            function handleDeleteClick(e) {
+                if (e.target.classList.contains('delete-btn')) {
+                    const listItem = e.target.closest('li');
+                    if (!listItem) return;
+                    const itemId = parseInt(listItem.dataset.id);
+                    const itemToDelete = currentList.find(item => item.id === itemId);
+                    const itemName = itemToDelete ? `「${itemToDelete.name}」` : "このアイテム";
+                    if (confirm(`${itemName}を削除しますか？`)) {
+                        currentList = currentList.filter(item => item.id !== itemId);
+                        renderList();
+                        // 自動保存はしない
+                    }
+                }
+            }
+
+            function renderList() {
+                // renderList 関数の内容は変更なし
+                activeItemsList.innerHTML = '';
+                completedItemsList.innerHTML = '';
+                let hasCompletedItems = false;
+                const sortedList = [...currentList].sort((a, b) => {
+                    if (a.checked !== b.checked) { return a.checked ? 1 : -1; }
+                    return a.id - b.id;
+                });
+
+                sortedList.forEach(item => {
+                    const li = document.createElement('li');
+                    li.dataset.id = item.id;
+                    li.classList.add(`category-${item.category || 'other'}`);
+
+                    const itemNameSpan = document.createElement('span');
+                    itemNameSpan.className = 'item-name'; itemNameSpan.textContent = item.name;
+                    const itemQuantitySpan = document.createElement('span');
+                    itemQuantitySpan.className = 'item-quantity'; if (item.quantity) { itemQuantitySpan.textContent = ` (${item.quantity})`; }
+                    const itemNotesSpan = document.createElement('span');
+                    itemNotesSpan.className = 'item-notes'; if (item.notes) { itemNotesSpan.textContent = item.notes; }
+
+                    li.innerHTML = `<input type="checkbox" title="チェック/解除" ${item.checked ? 'checked' : ''}><div class="item-details"><div class="item-main"></div></div><button class="delete-btn" title="削除">削除</button>`;
+                    const itemMainDiv = li.querySelector('.item-main');
+                    itemMainDiv.appendChild(itemNameSpan); itemMainDiv.appendChild(itemQuantitySpan);
+                    li.querySelector('.item-details').appendChild(itemNotesSpan);
+
+                    if (item.checked) { completedItemsList.appendChild(li); hasCompletedItems = true; }
+                    else { activeItemsList.appendChild(li); }
+                });
+                completedTitle.classList.toggle('hidden', !hasCompletedItems);
+                completedItemsList.classList.toggle('hidden', !hasCompletedItems);
+            }
+
+            // --- URL Loading Function (変更なし) ---
+            function loadList() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const listDataParam = urlParams.get('listData');
+                let loadedFromUrl = false;
+
+                if (listDataParam) {
+                    try {
+                        const decodedURIComponentString = decodeURIComponent(atob(listDataParam).split('').map(function (c) { return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2); }).join(''));
+                        const parsedList = JSON.parse(decodedURIComponentString);
+                        if (Array.isArray(parsedList)) {
+                            const isValidList = parsedList.every(item => typeof item === 'object' && item !== null && 'id' in item && 'name' in item);
+                            if (isValidList) {
+                                currentList = parsedList;
+                                loadedFromUrl = true;
+                                console.log("List loaded from URL parameter.");
+                                history.replaceState(null, '', window.location.pathname);
+                                alert("共有されたリストを読み込みました。");
+                            } else { console.warn("Invalid data structure in URL parameter."); alert("URLパラメータのリストデータが無効です。"); }
+                        } else { console.warn("Invalid data type in URL parameter (expected array)."); alert("URLパラメータのリストデータが無効です。"); }
+                    } catch (e) { console.error("Failed to load or parse list from URL parameter:", e); alert("URLパラメータの読み込みに失敗しました。"); }
+                }
+
+                if (!loadedFromUrl) {
+                    currentList = []; // URLパラメータがなければ空リストで開始
+                    console.log("Starting with an empty list.");
+                }
+                renderList();
+            }
+
+            // --- File Save Function (復活) ---
+            function handleSaveListToFile() {
+                const filenameBase = saveFilenameInput.value.trim() || 'shopping_list';
+                const finalFilename = filenameBase.endsWith('.json') ? filenameBase : `${filenameBase}.json`;
+
+                if (currentList.length === 0) {
+                    alert('保存するアイテムがリストにありません。');
+                    return;
+                }
+
+                try {
+                    // JSON文字列に変換 (インデント付きで見やすく)
+                    const listJson = JSON.stringify(currentList, null, 2);
+                    // Blobオブジェクトを作成
+                    const blob = new Blob([listJson], { type: 'application/json' });
+                    // ダウンロード用URLを作成
+                    const url = URL.createObjectURL(blob);
+                    // aタグを作成してクリックイベントを発火させ、ダウンロードを実行
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = finalFilename;
+                    document.body.appendChild(a); // Firefoxでの動作に必要
+                    a.click();
+                    document.body.removeChild(a); // 作成したaタグを削除
+                    URL.revokeObjectURL(url); // 作成したURLを解放
+                    console.log(`List saved as ${finalFilename}`);
+                } catch (error) {
+                    console.error('Failed to save list to file:', error);
+                    alert('リストのファイルへの保存に失敗しました。');
+                }
+            }
+
+            // --- File Load Function (新規追加) ---
+            function handleFileLoad(event) {
+                const file = event.target.files[0];
+                if (!file) {
+                    return; // ファイルが選択されなかった場合
+                }
+                // ファイル名入力欄にファイル名を（拡張子なしで）表示（任意）
+                saveFilenameInput.value = file.name.replace(/\.json$/i, '');
+
+                const reader = new FileReader();
+
+                reader.onload = (e) => {
+                    try {
+                        const fileContent = e.target.result;
+                        const parsedList = JSON.parse(fileContent);
+
+                        // 簡単なバリデーション
+                        if (Array.isArray(parsedList) && parsedList.every(item => typeof item === 'object' && item !== null && 'id' in item && 'name' in item)) {
+                            if (confirm(`ファイル「${file.name}」からリストを読み込みますか？現在のリストは上書きされます。`)) {
+                                currentList = parsedList;
+                                renderList();
+                                alert("リストをファイルから読み込みました。");
+                            }
+                        } else {
+                            alert("ファイルの形式が無効です。正しいJSON形式のリストファイルを選択してください。");
+                        }
+                    } catch (error) {
+                        console.error('Failed to read or parse file:', error);
+                        alert(`ファイルの読み込みまたは解析に失敗しました。\nエラー: ${error.message}`);
+                    } finally {
+                        // 同じファイルを連続で読み込めるように、inputの値をリセット
+                        loadFileInput.value = '';
+                    }
+                };
+
+                reader.onerror = (e) => {
+                    console.error('Error reading file:', e);
+                    alert('ファイルの読み込み中にエラーが発生しました。');
+                    loadFileInput.value = ''; // リセット
+                };
+
+                reader.readAsText(file); // ファイルの内容をテキストとして読み込む
+            }
+
+
+            // --- Invite Modal Functions (変更なし) ---
+            function openInviteModal() {
+                // (省略: モーダルを開く処理は変更なし)
+                inviteLinkArea.classList.add('hidden');
+                generateInviteLinkBtn.classList.remove('hidden');
+                generatedLinkInput.value = '';
+                qrcodeDisplay.innerHTML = '';
+                inviteModal.classList.add('visible');
+            }
+
+            function closeInviteModal() {
+                // (省略: モーダルを閉じる処理は変更なし)
+                inviteModal.classList.remove('visible');
+            }
+
+            function generateInviteLinkAndQR() {
+                // (省略: リンクとQR生成処理は変更なし)
+                if (currentList.length === 0) { alert('共有するアイテムがリストにありません。'); return; }
+                try {
+                    const listJson = JSON.stringify(currentList);
+                    const base64Data = btoa(encodeURIComponent(listJson).replace(/%([0-9A-F]{2})/g, function (match, p1) { return String.fromCharCode(parseInt(p1, 16)) }));
+                    const baseUrl = window.location.origin + window.location.pathname;
+                    const inviteLink = `${baseUrl}?listData=${base64Data}`;
+                    generatedLinkInput.value = inviteLink;
+                    qrcodeDisplay.innerHTML = '';
+                    QrCreator.render({ text: inviteLink, radius: 0.5, ecLevel: 'M', fill: '#333', background: null, size: 200 }, qrcodeDisplay);
+                    inviteLinkArea.classList.remove('hidden');
+                    generateInviteLinkBtn.classList.add('hidden');
+                } catch (error) { console.error('Failed to generate invite link or QR code:', error); alert('共有リンクまたはQRコードの生成に失敗しました。'); inviteLinkArea.classList.add('hidden'); generateInviteLinkBtn.classList.remove('hidden'); }
+            }
+
+            function copyGeneratedLink() {
+                // (省略: リンクコピー処理は変更なし)
+                if (!generatedLinkInput.value) return;
+                generatedLinkInput.select(); generatedLinkInput.setSelectionRange(0, 99999);
+                try {
+                    navigator.clipboard.writeText(generatedLinkInput.value)
+                        .then(() => { copyLinkBtn.textContent = 'コピー完了!'; copyLinkBtn.disabled = true; setTimeout(() => { copyLinkBtn.textContent = 'コピー'; copyLinkBtn.disabled = false; }, 1500); })
+                        .catch(err => { console.error('Failed to copy link using clipboard API: ', err); try { const successful = document.execCommand('copy'); if (successful) { copyLinkBtn.textContent = 'コピー完了!'; copyLinkBtn.disabled = true; setTimeout(() => { copyLinkBtn.textContent = 'コピー'; copyLinkBtn.disabled = false; }, 1500); } else { throw new Error('execCommand failed'); } } catch (execErr) { console.error('Fallback copy command failed: ', execErr); alert('リンクのコピーに失敗しました。手動でコピーしてください。'); } });
+                } catch (e) { console.error('Clipboard API not supported or other error:', e); alert('お使いのブラウザではクリップボードへのコピーがサポートされていない可能性があります。手動でコピーしてください。'); }
+            }
+
+        }); // End DOMContentLoaded
+    </script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5487062010970309"
+        crossorigin="anonymous">
+    </script>
+
+</body>
+
+</html>

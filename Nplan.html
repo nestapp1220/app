@@ -1,0 +1,2181 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nest Plan v2.0 (PeerJS)</title>
+    <script src="https://unpkg.com/simple-peer/simplepeer.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4FC3F7;
+            --primary-color-dark: #2FB2F3;
+            --primary-color-darker: #0FA1EF;
+            --primary-text-color: #202124;
+            --secondary-text-color: #5f6368;
+            --background-color: #f8f9fa;
+            --border-color: #dadce0;
+            --light-hover-bg-color: #f5f5f5;
+            --danger-color: #e74c3c;
+            --danger-color-dark: #c0392b;
+        }
+
+        body {
+            font-family: 'Roboto', 'Noto Sans JP', sans-serif;
+            margin: 0;
+            background-color: var(--background-color);
+            color: var(--primary-text-color);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .top-control-bar {
+            background-color: #fff;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .project-name-display {
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-right: 20px;
+            cursor: pointer;
+        }
+
+        .project-name-display:hover {
+            color: var(--primary-color);
+        }
+
+        .top-control-bar button,
+        .top-control-bar .dropdown>button {
+            background-color: #fff;
+            color: var(--primary-text-color);
+            border: 1px solid var(--border-color);
+            padding: 8px 15px;
+            margin-right: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 500;
+            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.1s ease-in-out;
+        }
+
+        .top-control-bar button:hover,
+        .top-control-bar .dropdown>button:hover {
+            background-color: var(--light-hover-bg-color);
+            border-color: #b0b0b0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .top-control-bar a>button {}
+
+
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f9f9f9;
+            min-width: 200px;
+            box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        .dropdown-content button {
+            color: var(--primary-text-color);
+            padding: 10px 15px;
+            text-decoration: none;
+            display: block;
+            width: 100%;
+            text-align: left;
+            border: none;
+            background-color: transparent;
+            margin: 0;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.9em;
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        .dropdown-content button:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-content button:hover {
+            background-color: var(--light-hover-bg-color);
+        }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+
+        .connection-status {
+            margin-left: auto;
+            font-size: 0.9em;
+            padding: 8px 12px;
+            border-radius: 4px;
+        }
+
+        .status-connected {
+            background-color: #e6f4ea;
+            color: #1e8e3e;
+        }
+
+        .status-disconnected {
+            background-color: #fce8e6;
+            color: #d93025;
+        }
+
+        .status-connecting {
+            background-color: #feefc3;
+            color: #f29900;
+        }
+
+        .tab-navigation {
+            background-color: #fff;
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 20px;
+            flex-shrink: 0;
+        }
+
+        .tab-navigation button {
+            background-color: transparent;
+            border: none;
+            padding: 12px 18px;
+            cursor: pointer;
+            font-size: 1em;
+            color: var(--secondary-text-color);
+            border-bottom: 3px solid transparent;
+            font-weight: 500;
+            transition: color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .tab-navigation button.active {
+            color: var(--primary-color);
+            border-bottom: 3px solid var(--primary-color);
+        }
+
+        .tab-navigation button:hover:not(.active) {
+            color: var(--primary-text-color);
+        }
+
+
+        .app-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: auto;
+            padding: 25px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+            color: var(--primary-text-color);
+        }
+
+        .modal-content label {
+            display: block;
+            margin-top: 10px;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .modal-content input[type="text"],
+        .modal-content input[type="date"],
+        .modal-content input[type="datetime-local"],
+        .modal-content textarea {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 1em;
+            box-sizing: border-box;
+        }
+
+        .modal-content input[type="text"]:focus,
+        .modal-content input[type="date"]:focus,
+        .modal-content input[type="datetime-local"]:focus,
+        .modal-content textarea:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(79, 195, 247, 0.3);
+            outline: none;
+        }
+
+        .modal-content textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .modal-content button {
+            padding: 9px 16px;
+            margin-right: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.95em;
+            border: 1px solid transparent;
+            transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
+            line-height: 1.5;
+        }
+
+        .modal-content button:last-child {
+            margin-right: 0;
+        }
+
+        .modal-content button.primary {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        .modal-content button.primary:hover {
+            background-color: var(--primary-color-dark);
+            border-color: var(--primary-color-dark);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
+        }
+
+        .modal-content button.primary:active {
+            background-color: var(--primary-color-darker);
+            border-color: var(--primary-color-darker);
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-content button.secondary {
+            background-color: #fff;
+            color: var(--primary-text-color);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .modal-content button.secondary:hover {
+            background-color: var(--light-hover-bg-color);
+            border-color: #b0b0b0;
+        }
+
+        .modal-content button.danger {
+            background-color: var(--danger-color);
+            color: white;
+            border-color: var(--danger-color);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        .modal-content button.danger:hover {
+            background-color: var(--danger-color-dark);
+            border-color: var(--danger-color-dark);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
+        }
+
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .calendar-header>div>button {
+            background-color: #fff;
+            color: var(--secondary-text-color);
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 500;
+            margin: 0 3px;
+            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.1s ease-in-out;
+        }
+
+        .calendar-header>div>button:hover {
+            background-color: var(--light-hover-bg-color);
+            border-color: #b0b0b0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            border: 1px solid var(--border-color);
+            gap: 1px;
+            background-color: var(--border-color);
+        }
+
+        .calendar-day-cell {
+            background-color: #fff;
+            padding: 8px;
+            min-height: 100px;
+            position: relative;
+            font-size: 0.9em;
+            transition: background-color 0.2s;
+        }
+
+        .calendar-day-cell:hover:not(.header):not(.empty) {
+            background-color: var(--light-hover-bg-color);
+        }
+
+        .calendar-day-cell.today {
+            background-color: #e8f0fe;
+            font-weight: bold;
+        }
+
+        .calendar-day-cell .date-number {
+            font-weight: bold;
+        }
+
+        .calendar-day-cell .event-item {
+            font-size: 0.8em;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 3px 6px;
+            border-radius: 4px;
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .calendar-day-cell .event-item:hover {
+            background-color: var(--primary-color-dark);
+        }
+
+        .calendar-day-cell .event-count {
+            font-size: 0.8em;
+            background-color: var(--secondary-text-color);
+            color: white;
+            padding: 2px 5px;
+            border-radius: 3px;
+            margin-top: 3px;
+        }
+
+
+        .project-board {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .board-column {
+            background-color: #f1f3f4;
+            padding: 10px;
+            border-radius: 6px;
+            min-width: 280px;
+            flex-shrink: 0;
+        }
+
+        .board-column h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            color: var(--primary-text-color);
+        }
+
+        .task-card {
+            background-color: #fff;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+            cursor: grab;
+            transition: box-shadow 0.2s, transform 0.2s;
+        }
+
+        .task-card:hover {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+        }
+
+        .task-card h4 {
+            margin: 0 0 5px 0;
+            font-size: 1em;
+        }
+
+        .task-card p {
+            margin: 0;
+            font-size: 0.9em;
+            color: var(--secondary-text-color);
+        }
+
+        .task-card .assignee {
+            font-size: 0.8em;
+            font-style: italic;
+            margin-top: 5px;
+        }
+
+        .task-card .actions {
+            margin-top: 8px;
+        }
+
+        .task-card .actions button {
+            font-size: 0.8em;
+            padding: 4px 8px;
+            margin-right: 5px;
+            border-radius: 3px;
+            border: 1px solid var(--border-color);
+            background-color: #fff;
+            color: var(--secondary-text-color);
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        .task-card .actions button:hover {
+            background-color: var(--light-hover-bg-color);
+            border-color: #b0b0b0;
+        }
+
+        .task-card .actions button:last-child {
+            margin-right: 0;
+        }
+
+
+        .poll-item {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .poll-item h3 {
+            margin-top: 0;
+        }
+
+        .poll-option {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+
+        .poll-option label {
+            flex-grow: 1;
+        }
+
+        .poll-option button {
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-weight: 500;
+            border: 1px solid var(--primary-color);
+            background-color: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: background-color 0.2s;
+        }
+
+        .poll-option button:hover:not(:disabled) {
+            background-color: var(--primary-color-dark);
+        }
+
+        .poll-option button:disabled {
+            background-color: var(--border-color);
+            border-color: var(--border-color);
+            cursor: not-allowed;
+        }
+
+        .poll-option .vote-count {
+            font-weight: bold;
+            margin-left: 5px;
+        }
+
+        .poll-item>button {
+            margin-top: 10px;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-weight: 500;
+            background-color: var(--danger-color);
+            color: white;
+            border: 1px solid var(--danger-color);
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .poll-item>button:hover {
+            background-color: var(--danger-color-dark);
+        }
+
+
+        #shared-document-textarea {
+            width: 100%;
+            min-height: 400px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1em;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            box-sizing: border-box;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        #shared-document-textarea:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(79, 195, 247, 0.3);
+            outline: none;
+        }
+
+
+        .reminder-list-item {
+            background-color: #fff;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .reminder-list-item button {
+            padding: 4px 8px;
+            font-size: 0.85em;
+            border-radius: 3px;
+            background-color: var(--danger-color);
+            color: white;
+            border: 1px solid var(--danger-color);
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .reminder-list-item button:hover {
+            background-color: var(--danger-color-dark);
+        }
+
+
+        #qrCodeModal .modal-content {
+            text-align: center;
+        }
+
+        #qrCodeCanvas {
+            border: 1px solid var(--border-color);
+            margin-top: 15px;
+        }
+
+        #shareUrlText {
+            width: 100%;
+            padding: 8px;
+            margin-top: 10px;
+            box-sizing: border-box;
+            border: 1px solid var(--border-color);
+            font-family: monospace;
+            border-radius: 4px;
+        }
+
+        .small-text {
+            font-size: 0.8em;
+            color: var(--secondary-text-color);
+        }
+
+        .recent-project-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+        }
+
+        .recent-project-item a {
+            color: var(--primary-color-dark);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .recent-project-item a:hover {
+            text-decoration: underline;
+        }
+
+        .btn-delete-recent-project {
+            background-color: transparent;
+            color: var(--danger-color);
+            border: none;
+            padding: 3px 6px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+
+        .btn-delete-recent-project:hover {
+            background-color: rgba(231, 76, 60, 0.1);
+            /* danger-color with alpha */
+        }
+
+
+        #btnCreateEventCalendarHeader,
+        #btnAddTaskToBoard,
+        #btnCreatePoll,
+        #btnCreateReminder {
+            padding: 9px 16px;
+            border-radius: 5px;
+            font-weight: 500;
+            font-size: 0.95em;
+            background-color: var(--primary-color);
+            color: white;
+            border: 1px solid var(--primary-color);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
+            cursor: pointer;
+        }
+
+        #btnCreateEventCalendarHeader:hover,
+        #btnAddTaskToBoard:hover,
+        #btnCreatePoll:hover,
+        #btnCreateReminder:hover {
+            background-color: var(--primary-color-dark);
+            border-color: var(--primary-color-dark);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
+        }
+
+        #btnAddTaskToBoard,
+        #btnCreatePoll,
+        #btnCreateReminder {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="top-control-bar">
+        <div id="projectNameDisplay" class="project-name-display">プロジェクト名</div>
+
+        <div class="dropdown">
+            <button>プロジェクト管理 ▼</button>
+            <div class="dropdown-content">
+                <button id="btnNewProject">新規プロジェクト作成</button>
+                <button id="btnLoadProject">ローカルから読込</button>
+                <button id="btnSaveProject">ローカルに手動保存</button>
+                <button id="btnGenerateShareUrl">共有URL/QR生成</button>
+            </div>
+        </div>
+        <a href="https://filebridge.web.fc2.com/" target="_blank"
+            style="text-decoration: none;"><button>FileBridgeへ</button></a>
+        <div id="connectionStatus" class="connection-status status-disconnected">未接続</div>
+    </div>
+
+    <div class="tab-navigation">
+        <button class="tab-button active" data-tab="calendar">カレンダー</button>
+        <button class="tab-button" data-tab="board">ボード</button>
+        <button class="tab-button" data-tab="polls">投票</button>
+        <button class="tab-button" data-tab="document">ドキュメント</button>
+        <button class="tab-button" data-tab="reminders">リマインダー</button>
+    </div>
+
+    <div class="app-content">
+        <div id="calendarTab" class="tab-pane active">
+            <div class="calendar-header">
+                <div>
+                    <button id="btnPrevMonth">‹ 前月</button>
+                    <button id="btnToday">今日</button>
+                    <button id="btnNextMonth">次月 ›</button>
+                </div>
+                <h2 id="currentMonthYear"></h2>
+                <button id="btnCreateEventCalendarHeader">+ 作成</button>
+            </div>
+            <div class="calendar-grid" id="calendarGrid">
+            </div>
+        </div>
+
+        <div id="boardTab" class="tab-pane">
+            <h2>プロジェクトボード (カンバン形式)</h2>
+            <button id="btnAddTaskToBoard">+ タスク追加</button>
+            <div class="project-board" id="projectBoard">
+            </div>
+        </div>
+
+        <div id="pollsTab" class="tab-pane">
+            <h2>投票</h2>
+            <button id="btnCreatePoll">+ 新規投票作成</button>
+            <div id="pollsList">
+            </div>
+        </div>
+
+        <div id="documentTab" class="tab-pane">
+            <h2>共有ドキュメント/メモ</h2>
+            <p class="small-text">シンプルなテキストベースのリアルタイム共同編集メモです。</p>
+            <textarea id="sharedDocumentTextarea" placeholder="議事録やアイデアをここに記入..."></textarea>
+        </div>
+
+        <div id="remindersTab" class="tab-pane">
+            <h2>リマインダー</h2>
+            <button id="btnCreateReminder">+ 新規リマインダー作成</button>
+            <div id="remindersList">
+            </div>
+        </div>
+    </div>
+
+    <div id="projectSetupModal" class="modal" style="display: flex;">
+        <div class="modal-content">
+            <h2>Nest Planへようこそ</h2>
+            <p>プロジェクトを開始してください。</p>
+            <button id="modalBtnCreateNewProject" class="primary">新規プロジェクト作成</button>
+            <label for="modalProjectFileLoad">またはローカルからプロジェクトファイルを選択:</label>
+            <input type="file" id="modalProjectFileLoad" accept=".json" style="margin-bottom: 15px;">
+            <div id="recentProjectsList">
+                <h4>最近のプロジェクト:</h4>
+            </div>
+            <p class="small-text" style="margin-top: 15px;">URLにプロジェクトデータが含まれている場合は、それが優先されます。</p>
+        </div>
+    </div>
+
+    <div id="editProjectNameModal" class="modal">
+        <div class="modal-content">
+            <h2>プロジェクト名編集</h2>
+            <label for="inputProjectName">新しいプロジェクト名:</label>
+            <input type="text" id="inputProjectName" placeholder="プロジェクト名">
+            <button id="btnSaveProjectName" class="primary">保存</button>
+            <button onclick="closeModal('editProjectNameModal')" class="secondary">キャンセル</button>
+        </div>
+    </div>
+
+    <div id="eventModal" class="modal">
+        <div class="modal-content">
+            <h2 id="eventModalTitle">イベント作成/編集</h2>
+            <input type="hidden" id="eventModalId">
+            <label for="eventTitle">タイトル:</label>
+            <input type="text" id="eventTitle" placeholder="イベント名">
+            <label for="eventDate">日付:</label>
+            <input type="date" id="eventDate">
+            <label for="eventDescription">詳細:</label>
+            <textarea id="eventDescription" placeholder="イベントの詳細"></textarea>
+            <button id="btnSaveEvent" class="primary">保存</button>
+            <button id="btnDeleteEvent" class="danger" style="float: right;">削除</button>
+            <button onclick="closeModal('eventModal')" class="secondary">キャンセル</button>
+        </div>
+    </div>
+
+    <div id="eventDetailModal" class="modal">
+        <div class="modal-content">
+            <h2 id="eventDetailTitle">イベント名</h2>
+            <p><strong>日付:</strong> <span id="eventDetailDate"></span></p>
+            <p><strong>詳細:</strong></p>
+            <p id="eventDetailDescription"
+                style="white-space: pre-wrap; background-color: #f9f9f9; padding: 10px; border-radius: 4px;"></p>
+            <button id="btnEditEventFromDetail" class="primary">編集</button>
+            <button onclick="closeModal('eventDetailModal')" class="secondary">閉じる</button>
+        </div>
+    </div>
+
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <h2 id="taskModalTitle">タスク作成/編集</h2>
+            <input type="hidden" id="taskModalId">
+            <input type="hidden" id="taskModalColumnId">
+            <label for="taskTitle">タイトル:</label>
+            <input type="text" id="taskTitle" placeholder="タスク名">
+            <label for="taskDescription">詳細:</label>
+            <textarea id="taskDescription" placeholder="タスクの詳細"></textarea>
+            <label for="taskAssignee">担当者:</label>
+            <input type="text" id="taskAssignee" placeholder="担当者名 (任意)">
+            <button id="btnSaveTask" class="primary">保存</button>
+            <button onclick="closeModal('taskModal')" class="secondary">キャンセル</button>
+        </div>
+    </div>
+
+    <div id="pollModal" class="modal">
+        <div class="modal-content">
+            <h2>新規投票作成</h2>
+            <label for="pollTopic">投票トピック:</label>
+            <input type="text" id="pollTopic" placeholder="例: 次のランチの場所は？">
+            <div id="pollOptionsContainer">
+                <label>選択肢:</label>
+                <input type="text" class="poll-option-input" placeholder="選択肢1">
+                <input type="text" class="poll-option-input" placeholder="選択肢2">
+            </div>
+            <button id="btnAddPollOptionModal" type="button" class="secondary"
+                style="margin-top: 5px; margin-bottom: 15px;">+ 選択肢を追加</button>
+            <br>
+            <button id="btnSavePoll" class="primary">投票を作成</button>
+            <button onclick="closeModal('pollModal')" class="secondary">キャンセル</button>
+        </div>
+    </div>
+
+    <div id="reminderModal" class="modal">
+        <div class="modal-content">
+            <h2>リマインダー作成</h2>
+            <label for="reminderText">リマインダー内容:</label>
+            <input type="text" id="reminderText" placeholder="例: 会議の資料準備">
+            <label for="reminderDatetime">日時:</label>
+            <input type="datetime-local" id="reminderDatetime">
+            <button id="btnSaveReminder" class="primary">保存</button>
+            <button onclick="closeModal('reminderModal')" class="secondary">キャンセル</button>
+        </div>
+    </div>
+
+    <div id="qrCodeModal" class="modal">
+        <div class="modal-content">
+            <h2>共有URL</h2>
+            <p>このURLを共有して、他のメンバーを招待できます。</p>
+            <input type="text" id="shareUrlText" readonly>
+            <canvas id="qrCodeCanvas"></canvas>
+            <p class="small-text">注意: プロジェクトデータが大きい場合、URLが非常に長くなることがあります。</p>
+            <button onclick="closeModal('qrCodeModal')" class="secondary">閉じる</button>
+        </div>
+    </div>
+
+
+    <script>
+        const SIGNALLING_SERVER_URL = 'wss://shard-earthy-dragon.glitch.me'; // Your signalling server
+
+        let projectData = null;
+        let currentProjectId = null;
+        let localPeerId = null;
+        let ws = null;
+        const peers = {}; // Stores SimplePeer instances, keyed by peerId
+        let currentOpenModal = null;
+        let currentCalendarDate = new Date();
+        let unsavedChanges = false;
+        const MAX_RECENT_PROJECTS = 5;
+
+        const projectNameDisplay = document.getElementById('projectNameDisplay');
+        const connectionStatusEl = document.getElementById('connectionStatus');
+        const tabs = document.querySelectorAll('.tab-button');
+        const panes = document.querySelectorAll('.tab-pane');
+
+        const projectSetupModal = document.getElementById('projectSetupModal');
+        const editProjectNameModal = document.getElementById('editProjectNameModal');
+        const eventModal = document.getElementById('eventModal');
+        const eventDetailModal = document.getElementById('eventDetailModal');
+        const taskModal = document.getElementById('taskModal');
+        const pollModal = document.getElementById('pollModal');
+        const reminderModal = document.getElementById('reminderModal');
+        const qrCodeModal = document.getElementById('qrCodeModal');
+
+        const calendarGridEl = document.getElementById('calendarGrid');
+        const currentMonthYearEl = document.getElementById('currentMonthYear');
+        const projectBoardEl = document.getElementById('projectBoard');
+        const pollsListEl = document.getElementById('pollsList');
+        const sharedDocumentTextarea = document.getElementById('sharedDocumentTextarea');
+        const remindersListEl = document.getElementById('remindersList');
+
+        function generateId() { return Math.random().toString(36).substr(2, 9); }
+
+        function saveProjectToLocalStorage() {
+            if (projectData && currentProjectId) {
+                localStorage.setItem(`nestPlanProject_${currentProjectId}`, JSON.stringify(projectData));
+                console.log('Project saved to local storage:', currentProjectId);
+                updateRecentProjects(projectData.projectName, currentProjectId);
+                unsavedChanges = false;
+            }
+        }
+
+        let autoSaveTimeout;
+        function scheduleAutoSave() {
+            unsavedChanges = true;
+            clearTimeout(autoSaveTimeout);
+            autoSaveTimeout = setTimeout(() => {
+                if (unsavedChanges) {
+                    saveProjectToLocalStorage();
+                    console.log('Project auto-saved.');
+                }
+            }, 2000);
+        }
+
+        function loadProjectFromLocalStorage(projectId) {
+            const data = localStorage.getItem(`nestPlanProject_${projectId}`);
+            if (data) {
+                projectData = JSON.parse(data);
+                currentProjectId = projectData.id; // Ensure currentProjectId is set from loaded data
+                console.log('Project loaded from local storage:', currentProjectId);
+                return true;
+            }
+            return false;
+        }
+
+        function updateRecentProjects(projectName, projectId) {
+            let recentProjects = JSON.parse(localStorage.getItem('nestPlanRecentProjects') || '[]');
+            recentProjects = recentProjects.filter(p => p.id !== projectId);
+            recentProjects.unshift({ name: projectName, id: projectId, lastAccessed: new Date().toISOString() });
+            if (recentProjects.length > MAX_RECENT_PROJECTS) {
+                recentProjects.pop();
+            }
+            localStorage.setItem('nestPlanRecentProjects', JSON.stringify(recentProjects));
+            renderRecentProjects();
+        }
+
+        function deleteRecentProject(projectIdToDelete, event) {
+            event.stopPropagation();
+            if (confirm('このプロジェクトをローカルストレージから削除しますか？\n（共有されている場合は他のメンバーのデータには影響しません）')) {
+                localStorage.removeItem(`nestPlanProject_${projectIdToDelete}`);
+
+                let recentProjects = JSON.parse(localStorage.getItem('nestPlanRecentProjects') || '[]');
+                recentProjects = recentProjects.filter(p => p.id !== projectIdToDelete);
+                localStorage.setItem('nestPlanRecentProjects', JSON.stringify(recentProjects));
+
+                renderRecentProjects();
+
+                if (currentProjectId === projectIdToDelete) {
+                    projectData = null;
+                    currentProjectId = null;
+                    projectNameDisplay.textContent = "プロジェクト名";
+                    clearAllPeers();
+                    openModal('projectSetupModal');
+                }
+                alert('プロジェクトがローカルストレージから削除されました。');
+            }
+        }
+
+
+        function renderRecentProjects() {
+            const recentProjectsListEl = document.getElementById('recentProjectsList');
+            if (!recentProjectsListEl) return;
+
+            let recentProjects = JSON.parse(localStorage.getItem('nestPlanRecentProjects') || '[]');
+            if (recentProjects.length === 0) {
+                recentProjectsListEl.innerHTML = '<h4>最近のプロジェクト:</h4><p class="small-text">最近使用したプロジェクトはありません。</p>';
+                return;
+            }
+
+            let html = '<h4>最近のプロジェクト:</h4><ul>';
+            recentProjects.forEach(p => {
+                html += `<li class="recent-project-item">
+                        <div>
+                            <a href="#" data-projectid="${p.id}" class="load-recent-project">${p.name}</a>
+                            <span class="small-text">(${new Date(p.lastAccessed).toLocaleDateString()})</span>
+                        </div>
+                        <button class="btn-delete-recent-project" data-projectid-delete="${p.id}" title="このプロジェクトをローカルから削除">削除</button>
+                     </li>`;
+            });
+            html += '</ul>';
+            recentProjectsListEl.innerHTML = html;
+
+            document.querySelectorAll('.load-recent-project').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const projectIdToLoad = e.target.dataset.projectid;
+                    if (loadProjectFromLocalStorage(projectIdToLoad)) {
+                        clearAllPeers(); // Clear old peers before initializing
+                        initializeProject();
+                        closeModal('projectSetupModal');
+                    } else {
+                        alert('最近のプロジェクトの読み込みに失敗しました。');
+                    }
+                });
+            });
+
+            document.querySelectorAll('.btn-delete-recent-project').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const projectIdToDelete = e.target.dataset.projectidDelete;
+                    deleteRecentProject(projectIdToDelete, e);
+                });
+            });
+        }
+
+        // MODIFIED: broadcastDataUpdate sends data only via P2P
+        function broadcastDataUpdate(updatedData = projectData) {
+            Object.values(peers).forEach(peer => {
+                if (peer.connected) {
+                    try {
+                        peer.send(JSON.stringify({ type: 'project_update', data: updatedData }));
+                        // console.log('Sent project_update to peer'); // Optional: for debugging
+                    } catch (err) {
+                        console.error("Error sending data via WebRTC: ", err);
+                    }
+                }
+            });
+            scheduleAutoSave(); // Local auto-save remains
+        }
+
+        function applyProjectUpdate(newData) {
+            const oldProjectName = projectData ? projectData.projectName : "";
+            projectData = newData;
+            if (!currentProjectId && projectData.id) currentProjectId = projectData.id; // Ensure currentProjectId is set
+
+            console.log('Project data updated from peer:', projectData);
+
+            projectNameDisplay.textContent = projectData.projectName;
+            if (oldProjectName !== projectData.projectName) {
+                updateRecentProjects(projectData.projectName, projectData.id);
+            }
+
+            renderCalendar();
+            renderProjectBoard();
+            renderPolls();
+            if (document.activeElement !== sharedDocumentTextarea) { // Avoid disrupting user typing
+                sharedDocumentTextarea.value = projectData.document || "";
+            }
+            renderReminders();
+            scheduleAutoSave(); // Save the received update locally
+        }
+
+        // MODIFIED: connectToSignallingServer's ws.onmessage
+        function connectToSignallingServer() {
+            if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+                console.log("WebSocket already connected or connecting.");
+                return;
+            }
+
+            ws = new WebSocket(SIGNALLING_SERVER_URL);
+            updateConnectionStatus('connecting', 'シグナリングサーバーに接続中...');
+
+            ws.onopen = () => {
+                console.log('Connected to signalling server.');
+                updateConnectionStatus('connected', 'シグナリングサーバーに接続済');
+                // Server should assign an ID upon connection. Let's assume it does via 'assign_id'.
+                // If not, localPeerId might need to be generated here and sent for registration.
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                switch (data.type) {
+                    case 'assign_id': // Server assigns a unique ID to this peer
+                        localPeerId = data.peerId;
+                        console.log('Assigned Peer ID:', localPeerId);
+                        if (currentProjectId) { // If already in a project, join the room
+                            ws.send(JSON.stringify({ type: 'join_room', roomId: currentProjectId, peerId: localPeerId }));
+                        }
+                        break;
+                    case 'room_joined': // Successfully joined the room
+                        console.log(`Successfully joined room: ${data.roomId} as ${data.peerId}`);
+                        updateConnectionStatus('connected', `プロジェクト参加中 (${Object.keys(peers).length + 1}人)`);
+                        // The server might send a list of existing peers in data.peersInRoom
+                        // If so, this client (newcomer) can initiate connections to them.
+                        // Example: if (data.peersInRoom) data.peersInRoom.forEach(peerId => initiatePeerConnection(peerId, true));
+                        break;
+                    case 'peer_joined': // Another peer joined the room
+                        if (data.peerId !== localPeerId) {
+                            console.log('Peer joined:', data.peerId);
+                            // This client (existing member) initiates connection to the new peer
+                            initiatePeerConnection(data.peerId, true);
+                            updateConnectionStatus('connected', `プロジェクト参加中 (${Object.keys(peers).length + 1}人)`);
+                        }
+                        break;
+                    case 'peer_left': // Another peer left the room
+                        if (data.peerId !== localPeerId && peers[data.peerId]) {
+                            console.log('Peer left:', data.peerId);
+                            peers[data.peerId].destroy();
+                            delete peers[data.peerId];
+                            updateConnectionStatus('connected', `プロジェクト参加中 (${Object.keys(peers).length + 1}人)`);
+                        }
+                        break;
+                    case 'signal': // Received a signal from another peer (for WebRTC handshake)
+                        if (data.fromPeerId !== localPeerId) {
+                            if (!peers[data.fromPeerId]) {
+                                // If we don't have a peer object, it means they are initiating.
+                                // We become the non-initiator.
+                                initiatePeerConnection(data.fromPeerId, false);
+                            }
+                            // Pass the signal to the corresponding peer object
+                            if (peers[data.fromPeerId]) {
+                                peers[data.fromPeerId].signal(data.signal);
+                            } else {
+                                // This might happen if initiatePeerConnection is slow or there's a race.
+                                console.warn(`Peer object for ${data.fromPeerId} not found when signal received. This could be an issue.`);
+                            }
+                        }
+                        break;
+                    // data_received case is removed as data now flows via P2P
+                    case 'error':
+                        console.error('Signalling server error:', data.message);
+                        alert(`サーバーエラー: ${data.message}`);
+                        break;
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('Disconnected from signalling server.');
+                updateConnectionStatus('disconnected', '未接続');
+                // Optionally, try to reconnect after a delay
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                updateConnectionStatus('disconnected', '接続エラー');
+            };
+        }
+
+
+        function initiatePeerConnection(targetPeerId, initiator) {
+            if (peers[targetPeerId] && peers[targetPeerId].connected) { // Check if already connected
+                console.log(`Already connected to peer: ${targetPeerId}`);
+                return;
+            }
+            if (peers[targetPeerId]) { // If exists but not connected, destroy and recreate
+                console.log(`Re-initiating P2P connection with ${targetPeerId}`);
+                peers[targetPeerId].destroy();
+                delete peers[targetPeerId];
+            }
+
+            console.log(`Initiating P2P connection with ${targetPeerId}, I am ${initiator ? 'initiator' : 'receiver'}`);
+
+            const peer = new SimplePeer({
+                initiator: initiator,
+                trickle: true, // Enable trickle ICE
+                // config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } // Optional: STUN server
+            });
+            peers[targetPeerId] = peer;
+
+            peer.on('signal', signalData => {
+                // Send signal data to targetPeerId via signalling server
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'signal',
+                        roomId: currentProjectId, // Important for server to route signal
+                        toPeerId: targetPeerId,
+                        fromPeerId: localPeerId,
+                        signal: signalData
+                    }));
+                } else {
+                    console.error("WebSocket not open, cannot send signal.");
+                }
+            });
+
+            peer.on('connect', () => {
+                console.log('CONNECTED to peer:', targetPeerId);
+                updateConnectionStatus('connected', `プロジェクト参加中 (${Object.keys(peers).length + 1}人)`);
+                // If this peer is the initiator, send the current project data to the new peer
+                if (initiator && projectData) {
+                    console.log(`Sending initial project data to new peer: ${targetPeerId}`);
+                    peer.send(JSON.stringify({ type: 'project_update', data: projectData }));
+                }
+            });
+
+            // MODIFIED: peer.on('data') to use rawData.toString()
+            peer.on('data', rawData => {
+                try {
+                    const dataString = rawData.toString(); // Convert Uint8Array/Buffer to string
+                    const dataMessage = JSON.parse(dataString);
+                    if (dataMessage.type === 'project_update') {
+                        console.log('Received project_update from peer:', targetPeerId);
+                        applyProjectUpdate(dataMessage.data);
+                    } else {
+                        console.log('Received other data from peer:', targetPeerId, dataMessage);
+                    }
+                } catch (err) {
+                    console.error("Error processing data from peer:", targetPeerId, err, rawData.toString());
+                }
+            });
+
+            peer.on('close', () => {
+                console.log('Connection CLOSED with peer:', targetPeerId);
+                delete peers[targetPeerId];
+                updateConnectionStatus('connected', `プロジェクト参加中 (${Object.keys(peers).length + 1}人)`);
+            });
+
+            peer.on('error', err => {
+                console.error('Peer error with:', targetPeerId, err);
+                if (peers[targetPeerId]) {
+                    peers[targetPeerId].destroy(); // Ensure peer is destroyed on error
+                    delete peers[targetPeerId];
+                }
+                updateConnectionStatus('connected', `プロジェクト参加中 (${Object.keys(peers).length + 1}人)`);
+                // Consider attempting to reconnect or notifying user
+            });
+        }
+
+        function updateConnectionStatus(status, message) {
+            connectionStatusEl.textContent = message;
+            connectionStatusEl.className = 'connection-status'; // Reset classes
+            if (status === 'connected') {
+                connectionStatusEl.classList.add('status-connected');
+            } else if (status === 'disconnected') {
+                connectionStatusEl.classList.add('status-disconnected');
+            } else if (status === 'connecting') {
+                connectionStatusEl.classList.add('status-connecting');
+            }
+        }
+
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'flex';
+                currentOpenModal = modalId;
+            }
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'none';
+                if (currentOpenModal === modalId) {
+                    currentOpenModal = null;
+                }
+            }
+        }
+
+        function initializeProject(isNew = false) {
+            // If not new and projectData already exists, use it.
+            if (isNew || !projectData) {
+                // If creating a new project, or no data loaded, generate new ID and default structure.
+                currentProjectId = generateId();
+                projectData = {
+                    id: currentProjectId,
+                    projectName: "新規プロジェクト",
+                    calendar: { events: [] },
+                    board: {
+                        columns: [
+                            { id: 'col_todo', title: '未着手', tasks: [] },
+                            { id: 'col_doing', title: '作業中', tasks: [] },
+                            { id: 'col_done', title: '完了', tasks: [] }
+                        ]
+                    },
+                    polls: [],
+                    document: "",
+                    reminders: []
+                };
+                console.log('New project created/initialized:', currentProjectId);
+            } else {
+                // If projectData was loaded (e.g., from localStorage or URL), use its ID.
+                currentProjectId = projectData.id;
+                console.log('Project initialized with existing data:', currentProjectId);
+            }
+
+
+            projectNameDisplay.textContent = projectData.projectName;
+
+            // Connect to signalling server if not already, and join the room
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                connectToSignallingServer(); // This will handle assign_id and then join_room if localPeerId is set
+            } else if (localPeerId) { // If WS connected and has peer ID, join room
+                ws.send(JSON.stringify({ type: 'join_room', roomId: currentProjectId, peerId: localPeerId }));
+            }
+            // Else, wait for 'assign_id' from server, then 'join_room' will be sent.
+
+            updateRecentProjects(projectData.projectName, currentProjectId);
+            renderAll(); // Render UI with current project data
+            saveProjectToLocalStorage(); // Save initial state or loaded state
+
+            // No initial broadcastDataUpdate() here as new peers will get data upon connection.
+            // If this client is joining an existing project, it will receive data from others.
+        }
+
+
+        function renderAll() {
+            if (!projectData) {
+                console.warn("renderAll called without projectData.");
+                return;
+            }
+            projectNameDisplay.textContent = projectData.projectName;
+            renderCalendar();
+            renderProjectBoard();
+            renderPolls();
+            if (document.activeElement !== sharedDocumentTextarea) {
+                sharedDocumentTextarea.value = projectData.document || "";
+            }
+            renderReminders();
+            checkReminders();
+        }
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                panes.forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab + 'Tab').classList.add('active');
+            });
+        });
+
+        projectNameDisplay.addEventListener('click', () => {
+            if (!projectData) return;
+            document.getElementById('inputProjectName').value = projectData.projectName;
+            openModal('editProjectNameModal');
+        });
+        document.getElementById('btnSaveProjectName').addEventListener('click', () => {
+            if (!projectData) return;
+            const newName = document.getElementById('inputProjectName').value.trim();
+            if (newName) {
+                projectData.projectName = newName;
+                projectNameDisplay.textContent = newName;
+                updateRecentProjects(newName, currentProjectId);
+                broadcastDataUpdate(); // Broadcast the change
+                closeModal('editProjectNameModal');
+            }
+        });
+
+        function renderCalendar() {
+            if (!projectData || !projectData.calendar) return;
+            calendarGridEl.innerHTML = '';
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth();
+            currentMonthYearEl.textContent = `${year}年 ${month + 1}月`;
+
+            const firstDayOfMonth = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            const dayHeaders = ['日', '月', '火', '水', '木', '金', '土'];
+            dayHeaders.forEach(header => {
+                const headerCell = document.createElement('div');
+                headerCell.classList.add('calendar-day-cell', 'header');
+                headerCell.style.textAlign = 'center';
+                headerCell.style.fontWeight = 'bold';
+                headerCell.style.backgroundColor = '#e9ecef';
+                headerCell.textContent = header;
+                calendarGridEl.appendChild(headerCell);
+            });
+
+            for (let i = 0; i < firstDayOfMonth; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.classList.add('calendar-day-cell', 'empty');
+                calendarGridEl.appendChild(emptyCell);
+            }
+
+            const today = new Date();
+            for (let day = 1; day <= daysInMonth; day++) {
+                const cell = document.createElement('div');
+                cell.classList.add('calendar-day-cell');
+                const cellDate = new Date(year, month, day);
+                if (cellDate.toDateString() === today.toDateString()) {
+                    cell.classList.add('today');
+                }
+
+                const dateNumber = document.createElement('div');
+                dateNumber.classList.add('date-number');
+                dateNumber.textContent = day;
+                cell.appendChild(dateNumber);
+
+                const eventsForDay = projectData.calendar.events.filter(event => {
+                    const eventDate = new Date(event.date);
+                    return eventDate.getFullYear() === year && eventDate.getMonth() === month && eventDate.getDate() === day;
+                });
+
+                const MAX_EVENTS_DISPLAY = 2;
+                eventsForDay.slice(0, MAX_EVENTS_DISPLAY).forEach(event => {
+                    const eventEl = document.createElement('div');
+                    eventEl.classList.add('event-item');
+                    eventEl.textContent = event.title;
+                    eventEl.title = event.title;
+                    eventEl.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showEventDetailModal(event.id);
+                    });
+                    cell.appendChild(eventEl);
+                });
+
+                if (eventsForDay.length > MAX_EVENTS_DISPLAY) {
+                    const moreEventsEl = document.createElement('div');
+                    moreEventsEl.classList.add('event-count');
+                    moreEventsEl.textContent = `他 ${eventsForDay.length - MAX_EVENTS_DISPLAY}件`;
+                    cell.appendChild(moreEventsEl);
+                }
+                cell.addEventListener('click', () => openEventModal(null, cellDate.toISOString().split('T')[0]));
+                calendarGridEl.appendChild(cell);
+            }
+        }
+
+        function openEventModal(eventId = null, dateStr = null) {
+            if (!projectData) return;
+            const modalTitle = document.getElementById('eventModalTitle');
+            const eventIdInput = document.getElementById('eventModalId');
+            const eventTitleInput = document.getElementById('eventTitle');
+            const eventDateInput = document.getElementById('eventDate');
+            const eventDescriptionInput = document.getElementById('eventDescription');
+            const deleteBtn = document.getElementById('btnDeleteEvent');
+
+            if (eventId) {
+                const event = projectData.calendar.events.find(e => e.id === eventId);
+                if (event) {
+                    modalTitle.textContent = 'イベント編集';
+                    eventIdInput.value = event.id;
+                    eventTitleInput.value = event.title;
+                    eventDateInput.value = event.date;
+                    eventDescriptionInput.value = event.description;
+                    deleteBtn.style.display = 'inline-block';
+                }
+            } else {
+                modalTitle.textContent = 'イベント作成';
+                eventIdInput.value = '';
+                eventTitleInput.value = '';
+                eventDateInput.value = dateStr || new Date().toISOString().split('T')[0];
+                eventDescriptionInput.value = '';
+                deleteBtn.style.display = 'none';
+            }
+            openModal('eventModal');
+        }
+
+        function showEventDetailModal(eventId) {
+            if (!projectData) return;
+            const event = projectData.calendar.events.find(e => e.id === eventId);
+            if (!event) return;
+
+            document.getElementById('eventDetailTitle').textContent = event.title;
+            document.getElementById('eventDetailDate').textContent = new Date(event.date).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('eventDetailDescription').textContent = event.description;
+
+            const editBtn = document.getElementById('btnEditEventFromDetail');
+            editBtn.onclick = () => {
+                closeModal('eventDetailModal');
+                openEventModal(eventId);
+            };
+            openModal('eventDetailModal');
+        }
+
+        document.getElementById('btnSaveEvent').addEventListener('click', () => {
+            if (!projectData) return;
+            const id = document.getElementById('eventModalId').value || generateId();
+            const title = document.getElementById('eventTitle').value.trim();
+            const date = document.getElementById('eventDate').value;
+            const description = document.getElementById('eventDescription').value.trim();
+
+            if (!title || !date) {
+                alert('タイトルと日付は必須です。');
+                return;
+            }
+
+            const existingEventIndex = projectData.calendar.events.findIndex(e => e.id === id);
+            if (existingEventIndex > -1) {
+                projectData.calendar.events[existingEventIndex] = { id, title, date, description };
+            } else {
+                projectData.calendar.events.push({ id, title, date, description });
+            }
+
+            renderCalendar();
+            broadcastDataUpdate();
+            closeModal('eventModal');
+        });
+
+        document.getElementById('btnDeleteEvent').addEventListener('click', () => {
+            if (!projectData) return;
+            const id = document.getElementById('eventModalId').value;
+            if (id && confirm('このイベントを削除しますか？')) {
+                projectData.calendar.events = projectData.calendar.events.filter(e => e.id !== id);
+                renderCalendar();
+                broadcastDataUpdate();
+                closeModal('eventModal');
+            }
+        });
+
+        document.getElementById('btnCreateEventCalendarHeader').addEventListener('click', () => openEventModal());
+        document.getElementById('btnPrevMonth').addEventListener('click', () => {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+            renderCalendar();
+        });
+        document.getElementById('btnToday').addEventListener('click', () => {
+            currentCalendarDate = new Date();
+            renderCalendar();
+        });
+        document.getElementById('btnNextMonth').addEventListener('click', () => {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+            renderCalendar();
+        });
+
+        function renderProjectBoard() {
+            if (!projectData || !projectData.board) return;
+            projectBoardEl.innerHTML = '';
+
+            projectData.board.columns.forEach(column => {
+                const columnEl = document.createElement('div');
+                columnEl.classList.add('board-column');
+                columnEl.dataset.columnId = column.id;
+
+                const titleEl = document.createElement('h3');
+                titleEl.textContent = column.title;
+                columnEl.appendChild(titleEl);
+
+                column.tasks.forEach(task => {
+                    const taskCard = createTaskCard(task, column.id);
+                    columnEl.appendChild(taskCard);
+                });
+
+                columnEl.addEventListener('dragover', e => {
+                    e.preventDefault();
+                    columnEl.style.backgroundColor = '#e0e0e0';
+                });
+                columnEl.addEventListener('dragleave', () => {
+                    columnEl.style.backgroundColor = '#f1f3f4';
+                });
+                columnEl.addEventListener('drop', e => {
+                    e.preventDefault();
+                    columnEl.style.backgroundColor = '#f1f3f4';
+                    const taskId = e.dataTransfer.getData('text/plain');
+                    const originalColumnId = e.dataTransfer.getData('originalColumnId');
+                    const targetColumnId = column.id;
+
+                    if (taskId && originalColumnId && targetColumnId && originalColumnId !== targetColumnId) {
+                        moveTask(taskId, originalColumnId, targetColumnId);
+                    }
+                });
+                projectBoardEl.appendChild(columnEl);
+            });
+        }
+
+        function createTaskCard(task, columnId) {
+            const taskCard = document.createElement('div');
+            taskCard.classList.add('task-card');
+            taskCard.dataset.taskId = task.id;
+            taskCard.draggable = true;
+
+            taskCard.addEventListener('dragstart', e => {
+                e.dataTransfer.setData('text/plain', task.id);
+                e.dataTransfer.setData('originalColumnId', columnId);
+                e.dataTransfer.effectAllowed = 'move';
+                setTimeout(() => {
+                    taskCard.style.opacity = '0.5';
+                }, 0);
+            });
+            taskCard.addEventListener('dragend', () => {
+                taskCard.style.opacity = '1';
+            });
+
+            const titleEl = document.createElement('h4');
+            titleEl.textContent = task.title;
+            taskCard.appendChild(titleEl);
+
+            if (task.description) {
+                const descEl = document.createElement('p');
+                descEl.textContent = task.description.substring(0, 50) + (task.description.length > 50 ? '...' : '');
+                taskCard.appendChild(descEl);
+            }
+            if (task.assignee) {
+                const assigneeEl = document.createElement('p');
+                assigneeEl.classList.add('assignee');
+                assigneeEl.textContent = `担当: ${task.assignee}`;
+                taskCard.appendChild(assigneeEl);
+            }
+
+            const actionsEl = document.createElement('div');
+            actionsEl.classList.add('actions');
+            const editBtn = document.createElement('button');
+            editBtn.textContent = '編集';
+            editBtn.onclick = () => openTaskModal(task.id, columnId);
+            actionsEl.appendChild(editBtn);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '削除';
+            deleteBtn.onclick = () => {
+                if (confirm(`タスク「${task.title}」を削除しますか？`)) {
+                    deleteTask(task.id, columnId);
+                }
+            };
+            actionsEl.appendChild(deleteBtn);
+            taskCard.appendChild(actionsEl);
+            return taskCard;
+        }
+
+        function moveTask(taskId, fromColumnId, toColumnId) {
+            if (!projectData) return;
+            const fromColumn = projectData.board.columns.find(c => c.id === fromColumnId);
+            const toColumn = projectData.board.columns.find(c => c.id === toColumnId);
+            if (!fromColumn || !toColumn) return;
+
+            const taskIndex = fromColumn.tasks.findIndex(t => t.id === taskId);
+            if (taskIndex === -1) return;
+
+            const [task] = fromColumn.tasks.splice(taskIndex, 1);
+            toColumn.tasks.push(task);
+
+            renderProjectBoard();
+            broadcastDataUpdate();
+        }
+
+        function openTaskModal(taskId = null, columnId = null) {
+            if (!projectData) return;
+            const modalTitle = document.getElementById('taskModalTitle');
+            const taskIdInput = document.getElementById('taskModalId');
+            const taskColumnIdInput = document.getElementById('taskModalColumnId');
+            const taskTitleInput = document.getElementById('taskTitle');
+            const taskDescriptionInput = document.getElementById('taskDescription');
+            const taskAssigneeInput = document.getElementById('taskAssignee');
+
+            if (taskId && columnId) {
+                const column = projectData.board.columns.find(c => c.id === columnId);
+                const task = column ? column.tasks.find(t => t.id === taskId) : null;
+                if (task) {
+                    modalTitle.textContent = 'タスク編集';
+                    taskIdInput.value = task.id;
+                    taskColumnIdInput.value = columnId;
+                    taskTitleInput.value = task.title;
+                    taskDescriptionInput.value = task.description;
+                    taskAssigneeInput.value = task.assignee || '';
+                }
+            } else {
+                modalTitle.textContent = 'タスク作成';
+                taskIdInput.value = '';
+                taskColumnIdInput.value = columnId || (projectData.board.columns[0] ? projectData.board.columns[0].id : '');
+                taskTitleInput.value = '';
+                taskDescriptionInput.value = '';
+                taskAssigneeInput.value = '';
+            }
+            openModal('taskModal');
+        }
+
+        document.getElementById('btnAddTaskToBoard').addEventListener('click', () => {
+            if (!projectData) return;
+            const firstColumnId = projectData.board.columns[0] ? projectData.board.columns[0].id : null;
+            if (firstColumnId) {
+                openTaskModal(null, firstColumnId);
+            } else {
+                alert("ボードにカラムがありません。まずカラムを作成してください。（現在この機能は未実装です）");
+            }
+        });
+
+        document.getElementById('btnSaveTask').addEventListener('click', () => {
+            if (!projectData) return;
+            const id = document.getElementById('taskModalId').value || generateId();
+            let columnId = document.getElementById('taskModalColumnId').value;
+            const title = document.getElementById('taskTitle').value.trim();
+            const description = document.getElementById('taskDescription').value.trim();
+            const assignee = document.getElementById('taskAssignee').value.trim();
+
+            if (!title) {
+                alert('タスクタイトルは必須です。');
+                return;
+            }
+            if (!columnId && projectData.board.columns.length > 0) {
+                columnId = projectData.board.columns[0].id;
+            }
+            if (!columnId) {
+                alert('タスクを追加するカラムが見つかりません。');
+                return;
+            }
+
+            const column = projectData.board.columns.find(c => c.id === columnId);
+            if (!column) {
+                alert('指定されたカラムが見つかりません。');
+                return;
+            }
+
+            const task = { id, title, description, assignee };
+            const existingTaskIndex = column.tasks.findIndex(t => t.id === id);
+
+            if (existingTaskIndex > -1) {
+                column.tasks[existingTaskIndex] = task;
+            } else {
+                column.tasks.push(task);
+            }
+
+            renderProjectBoard();
+            broadcastDataUpdate();
+            closeModal('taskModal');
+        });
+
+        function deleteTask(taskId, columnId) {
+            if (!projectData) return;
+            const column = projectData.board.columns.find(c => c.id === columnId);
+            if (column) {
+                column.tasks = column.tasks.filter(t => t.id !== taskId);
+                renderProjectBoard();
+                broadcastDataUpdate();
+            }
+        }
+
+        function renderPolls() {
+            if (!projectData || !projectData.polls) return;
+            pollsListEl.innerHTML = '';
+
+            projectData.polls.forEach(poll => {
+                const pollItemEl = document.createElement('div');
+                pollItemEl.classList.add('poll-item');
+
+                const topicEl = document.createElement('h3');
+                topicEl.textContent = poll.topic;
+                pollItemEl.appendChild(topicEl);
+
+                poll.options.forEach((option, index) => {
+                    const optionEl = document.createElement('div');
+                    optionEl.classList.add('poll-option');
+
+                    const labelEl = document.createElement('label');
+                    labelEl.textContent = `${option.text} (${option.votes}票)`;
+                    optionEl.appendChild(labelEl);
+
+                    const voteBtn = document.createElement('button');
+                    const alreadyVotedThisPoll = poll.voters && poll.voters[localPeerId]; // Check if this peer ID voted
+
+                    if (alreadyVotedThisPoll) {
+                        voteBtn.textContent = '投票済';
+                        voteBtn.disabled = true;
+                        if (poll.voters[localPeerId] === index) { // Highlight the voted option
+                            labelEl.style.fontWeight = 'bold';
+                            labelEl.style.color = 'var(--primary-color)';
+                        }
+                    } else {
+                        voteBtn.textContent = '投票';
+                        voteBtn.onclick = () => castVote(poll.id, index);
+                    }
+                    optionEl.appendChild(voteBtn);
+                    pollItemEl.appendChild(optionEl);
+                });
+
+                const deletePollBtn = document.createElement('button');
+                deletePollBtn.textContent = 'この投票を削除';
+                deletePollBtn.onclick = () => {
+                    if (confirm(`投票「${poll.topic}」を削除しますか？`)) {
+                        projectData.polls = projectData.polls.filter(p => p.id !== poll.id);
+                        renderPolls();
+                        broadcastDataUpdate();
+                    }
+                };
+                pollItemEl.appendChild(deletePollBtn);
+                pollsListEl.appendChild(pollItemEl);
+            });
+        }
+
+        document.getElementById('btnCreatePoll').addEventListener('click', () => {
+            document.getElementById('pollTopic').value = '';
+            const optionsContainer = document.getElementById('pollOptionsContainer');
+            optionsContainer.innerHTML = `
+            <label>選択肢:</label>
+            <input type="text" class="poll-option-input" placeholder="選択肢1">
+            <input type="text" class="poll-option-input" placeholder="選択肢2">`;
+            openModal('pollModal');
+        });
+
+        document.getElementById('btnAddPollOptionModal').addEventListener('click', () => {
+            const optionsContainer = document.getElementById('pollOptionsContainer');
+            const newInput = document.createElement('input');
+            newInput.type = 'text';
+            newInput.classList.add('poll-option-input');
+            newInput.placeholder = `選択肢${optionsContainer.querySelectorAll('.poll-option-input').length + 1}`;
+            optionsContainer.appendChild(newInput);
+        });
+
+        document.getElementById('btnSavePoll').addEventListener('click', () => {
+            if (!projectData) return;
+            const topic = document.getElementById('pollTopic').value.trim();
+            if (!topic) {
+                alert('投票トピックは必須です。');
+                return;
+            }
+            const optionInputs = document.querySelectorAll('#pollOptionsContainer .poll-option-input');
+            const options = Array.from(optionInputs)
+                .map(input => ({ text: input.value.trim(), votes: 0 }))
+                .filter(opt => opt.text !== '');
+
+            if (options.length < 2) {
+                alert('有効な選択肢を2つ以上入力してください。');
+                return;
+            }
+
+            const newPoll = {
+                id: generateId(),
+                topic: topic,
+                options: options,
+                voters: {} // Initialize voters object
+            };
+            projectData.polls.push(newPoll);
+            renderPolls();
+            broadcastDataUpdate();
+            closeModal('pollModal');
+        });
+
+        function castVote(pollId, optionIndex) {
+            if (!projectData || !localPeerId) return; // Need localPeerId to record vote
+            const poll = projectData.polls.find(p => p.id === pollId);
+            if (poll) {
+                if (poll.voters && poll.voters[localPeerId] !== undefined) {
+                    alert('この投票には既に投票済みです。');
+                    return;
+                }
+                poll.options[optionIndex].votes++;
+                if (!poll.voters) poll.voters = {};
+                poll.voters[localPeerId] = optionIndex; // Record voter by peer ID
+                renderPolls();
+                broadcastDataUpdate();
+            }
+        }
+
+        let docTypingTimeout;
+        sharedDocumentTextarea.addEventListener('input', () => {
+            if (!projectData) return;
+            projectData.document = sharedDocumentTextarea.value;
+            clearTimeout(docTypingTimeout);
+            docTypingTimeout = setTimeout(() => {
+                broadcastDataUpdate(); // Broadcast after a short delay
+            }, 750); // Debounce broadcast
+            scheduleAutoSave(); // Local save happens more frequently
+        });
+
+
+        function renderReminders() {
+            if (!projectData || !projectData.reminders) return;
+            remindersListEl.innerHTML = '';
+
+            const sortedReminders = [...projectData.reminders].sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+
+            sortedReminders.forEach(reminder => {
+                const itemEl = document.createElement('div');
+                itemEl.classList.add('reminder-list-item');
+                if (new Date(reminder.datetime) < new Date() && !reminder.notified) {
+                    itemEl.style.borderLeft = '3px solid orange'; // Past due, not notified
+                }
+                if (reminder.notified) { // Notified (and possibly past due)
+                    itemEl.style.opacity = '0.7';
+                    itemEl.style.textDecoration = 'line-through';
+                }
+
+                const textEl = document.createElement('span');
+                textEl.textContent = `${reminder.text} - ${new Date(reminder.datetime).toLocaleString('ja-JP')}`;
+                itemEl.appendChild(textEl);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = '削除';
+                deleteBtn.onclick = () => {
+                    if (confirm('このリマインダーを削除しますか？')) {
+                        projectData.reminders = projectData.reminders.filter(r => r.id !== reminder.id);
+                        renderReminders();
+                        broadcastDataUpdate();
+                    }
+                };
+                itemEl.appendChild(deleteBtn);
+                remindersListEl.appendChild(itemEl);
+            });
+        }
+
+        document.getElementById('btnCreateReminder').addEventListener('click', () => {
+            document.getElementById('reminderText').value = '';
+            // Default to 1 hour from now
+            document.getElementById('reminderDatetime').value = new Date(new Date().getTime() + 60 * 60 * 1000).toISOString().substring(0, 16);
+            openModal('reminderModal');
+        });
+
+        document.getElementById('btnSaveReminder').addEventListener('click', () => {
+            if (!projectData) return;
+            const text = document.getElementById('reminderText').value.trim();
+            const datetime = document.getElementById('reminderDatetime').value;
+
+            if (!text || !datetime) {
+                alert('リマインダー内容と日時は必須です。');
+                return;
+            }
+            if (new Date(datetime) <= new Date()) {
+                alert('過去の日時は設定できません。');
+                return;
+            }
+
+            const newReminder = {
+                id: generateId(),
+                text: text,
+                datetime: datetime,
+                notified: false
+            };
+            projectData.reminders.push(newReminder);
+            renderReminders();
+            checkReminders(); // Schedule this new reminder's notification
+            broadcastDataUpdate();
+            closeModal('reminderModal');
+        });
+
+        const reminderTimeouts = {}; // Store timeouts to clear them if reminders change
+        function checkReminders() {
+            if (!projectData || !projectData.reminders) return;
+
+            // Clear existing timeouts that might be for old/deleted reminders
+            for (const id in reminderTimeouts) {
+                clearTimeout(reminderTimeouts[id]);
+                delete reminderTimeouts[id];
+            }
+
+            projectData.reminders.forEach(reminder => {
+                if (!reminder.notified) {
+                    const reminderTime = new Date(reminder.datetime).getTime();
+                    const now = new Date().getTime();
+                    const timeToReminder = reminderTime - now;
+
+                    if (timeToReminder > 0) {
+                        reminderTimeouts[reminder.id] = setTimeout(() => {
+                            showNotification(`リマインダー: ${reminder.text}`, `予定時刻: ${new Date(reminder.datetime).toLocaleTimeString()}`);
+                            reminder.notified = true; // Mark as notified
+                            renderReminders(); // Update UI
+                            broadcastDataUpdate(); // Sync change
+                            delete reminderTimeouts[reminder.id]; // Clean up timeout
+                        }, timeToReminder);
+                    } else {
+                        // If reminder time is past and not notified (e.g., app was closed)
+                        // Optionally, notify immediately or handle differently
+                        // For now, renderReminders() will visually indicate it's past due.
+                    }
+                }
+            });
+        }
+
+
+        function showNotification(title, body) {
+            if (!("Notification" in window)) {
+                alert("このブラウザはデスクトップ通知をサポートしていません。\n" + title + "\n" + body);
+            } else if (Notification.permission === "granted") {
+                new Notification(title, { body: body, icon: 'favicon.ico' }); // Assuming favicon.ico exists
+            } else if (Notification.permission !== "denied") {
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") {
+                        new Notification(title, { body: body, icon: 'favicon.ico' });
+                    } else {
+                        alert("通知がブロックされました。\n" + title + "\n" + body);
+                    }
+                });
+            } else { // Permission is denied
+                alert("通知がブロックされています。設定を確認してください。\n" + title + "\n" + body);
+            }
+        }
+
+
+        document.getElementById('btnNewProject').addEventListener('click', () => {
+            if (unsavedChanges && !confirm('未保存の変更があります。新しいプロジェクトを作成しますか？')) {
+                return;
+            }
+            clearAllPeers(); // Disconnect from current peers
+            initializeProject(true); // Create a new project
+            closeModal('projectSetupModal');
+        });
+
+        document.getElementById('modalBtnCreateNewProject').addEventListener('click', () => {
+            clearAllPeers();
+            initializeProject(true);
+            closeModal('projectSetupModal');
+        });
+
+
+        document.getElementById('btnLoadProject').addEventListener('click', () => {
+            if (unsavedChanges && !confirm('未保存の変更があります。ファイルを読み込むと現在の作業内容は失われます。よろしいですか？')) {
+                return;
+            }
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.json,application/json';
+            fileInput.onchange = e => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = event => {
+                        try {
+                            const loadedData = JSON.parse(event.target.result);
+                            if (loadedData && loadedData.id && loadedData.projectName) {
+                                clearAllPeers(); // Disconnect from old project's peers
+                                projectData = loadedData; // Set the new project data
+                                initializeProject(); // Initialize with the loaded data
+                                closeModal('projectSetupModal');
+                            } else {
+                                alert('無効なプロジェクトファイル形式です。');
+                            }
+                        } catch (err) {
+                            alert('プロジェクトファイルの読み込みに失敗しました: ' + err.message);
+                            console.error(err);
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            fileInput.click();
+        });
+
+        document.getElementById('modalProjectFileLoad').addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = event => {
+                    try {
+                        const loadedData = JSON.parse(event.target.result);
+                        if (loadedData && loadedData.id && loadedData.projectName) {
+                            clearAllPeers();
+                            projectData = loadedData;
+                            initializeProject();
+                            closeModal('projectSetupModal');
+                        } else {
+                            alert('無効なプロジェクトファイル形式です。');
+                        }
+                    } catch (err) {
+                        alert('プロジェクトファイルの読み込みに失敗しました: ' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        document.getElementById('btnSaveProject').addEventListener('click', () => {
+            if (!projectData) {
+                alert('保存するプロジェクトがありません。');
+                return;
+            }
+            saveProjectToLocalStorage(); // Also save to local storage for persistence
+            const dataStr = JSON.stringify(projectData, null, 2); // Pretty print JSON
+            const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+
+            const exportFileDefaultName = `${projectData.projectName.replace(/\s+/g, '_') || 'NestPlanProject'}.json`;
+
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+            unsavedChanges = false; // Mark as saved
+            alert('プロジェクトがローカルに保存されました (ダウンロードフォルダを確認してください)。');
+        });
+
+        document.getElementById('btnGenerateShareUrl').addEventListener('click', () => {
+            if (!projectData || !currentProjectId) {
+                alert('共有するプロジェクトがありません。');
+                return;
+            }
+            saveProjectToLocalStorage(); // Ensure current state is saved before sharing link
+            // Share by projectId. The other user will connect and sync.
+            const shareUrl = `${window.location.origin}${window.location.pathname}?projectId=${encodeURIComponent(currentProjectId)}`;
+            document.getElementById('shareUrlText').value = shareUrl;
+            generateQrCode(shareUrl);
+            openModal('qrCodeModal');
+        });
+
+        function clearAllPeers() {
+            console.log("Clearing all P2P connections.");
+            Object.values(peers).forEach(peer => {
+                if (peer) {
+                    peer.destroy();
+                }
+            });
+            for (const key in peers) { // Clear the peers object
+                delete peers[key];
+            }
+            // If WebSocket is open and joined a room, send 'leave_room'
+            if (ws && ws.readyState === WebSocket.OPEN && currentProjectId && localPeerId) {
+                ws.send(JSON.stringify({ type: 'leave_room', roomId: currentProjectId, peerId: localPeerId }));
+            }
+            // Note: Signalling server should handle 'leave_room' and notify other peers via 'peer_left'.
+        }
+
+
+        function generateQrCode(url) {
+            const canvas = document.getElementById('qrCodeCanvas');
+            const ctx = canvas.getContext('2d');
+            const size = 200; // QR code canvas size
+            canvas.width = size;
+            canvas.height = size;
+
+            if (typeof QRCode === 'undefined') {
+                // Fallback if QRCode library isn't loaded
+                ctx.clearRect(0, 0, size, size);
+                ctx.font = "12px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("QRコードライブラリ未読込", size / 2, size / 2 - 10);
+                ctx.fillText("(qrcode.jsが必要です)", size / 2, size / 2 + 10);
+                console.warn("QRCode.js library not found. Please include it to generate QR codes.");
+                return;
+            }
+
+            ctx.clearRect(0, 0, size, size); // Clear previous QR code
+
+            try {
+                new QRCode(canvas, {
+                    text: url,
+                    width: size,
+                    height: size,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H // High correction level
+                });
+            } catch (e) {
+                console.error("QR Code generation failed:", e);
+                ctx.clearRect(0, 0, size, size);
+                ctx.font = "12px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("QRコード生成失敗", size / 2, size / 2);
+            }
+        }
+
+        // Dynamically load QRCode.js library
+        const qrLibScript = document.createElement('script');
+        qrLibScript.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
+        qrLibScript.onload = () => console.log("QRCode.js loaded.");
+        qrLibScript.onerror = () => console.error("Failed to load QRCode.js.");
+        document.head.appendChild(qrLibScript);
+
+
+        function initializeApp() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlProjectId = urlParams.get('projectId');
+            // projectData via URL is removed for P2P, as projectId is sufficient to join and sync.
+
+            let loadedFromUrlOrStorage = false;
+
+            if (urlProjectId) {
+                console.log("Project ID from URL:", urlProjectId);
+                if (loadProjectFromLocalStorage(urlProjectId)) {
+                    // Project found in local storage, initialize with it.
+                    initializeProject();
+                    loadedFromUrlOrStorage = true;
+                } else {
+                    // Project ID in URL, but not in local storage.
+                    // This means this client is joining. Initialize a minimal project structure.
+                    // Data will be synced from other peers once connected.
+                    currentProjectId = urlProjectId;
+                    projectData = { // Minimal structure to allow joining
+                        id: currentProjectId,
+                        projectName: "プロジェクト読込中...",
+                        calendar: { events: [] }, board: { columns: [] }, polls: [], document: "", reminders: []
+                    };
+                    initializeProject(); // This will attempt to connect and join the room
+                    loadedFromUrlOrStorage = true;
+                    updateConnectionStatus('connecting', 'プロジェクトデータ待機中...');
+                }
+            }
+
+            if (loadedFromUrlOrStorage) {
+                closeModal('projectSetupModal');
+            } else {
+                // No project ID in URL, show setup modal to create new or load from recent/file.
+                renderRecentProjects();
+                openModal('projectSetupModal'); // projectSetupModal is initially visible by style
+            }
+
+            // Always try to connect to signalling server, it's needed for peer discovery
+            connectToSignallingServer();
+
+            // Initial render if projectData exists (e.g. loaded from URL's projectId matching localStorage)
+            if (projectData) {
+                renderAll();
+            }
+
+            checkReminders(); // Initial check
+            setInterval(checkReminders, 60 * 1000); // Periodically check reminders
+
+            // Request notification permission if not already granted/denied
+            if ("Notification" in window && Notification.permission === "default") {
+                // Notification.requestPermission(); // Optionally request upfront, or wait until first reminder
+            }
+
+            window.addEventListener('beforeunload', (event) => {
+                if (unsavedChanges) {
+                    saveProjectToLocalStorage(); // Ensure latest changes are saved
+                }
+                clearAllPeers(); // Gracefully disconnect from peers
+                if (ws && ws.readyState === WebSocket.OPEN) { // Close WebSocket connection
+                    ws.close();
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initializeApp);
+
+    </script>
+</body>
+
+</html>

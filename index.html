@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nest App Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-900 text-white font-sans">
+
+    <!-- Hero Section -->
+    <section
+        class="min-h-screen flex flex-col justify-center items-center text-center px-4 bg-gradient-to-br from-gray-900 to-black">
+        <h1 class="text-5xl md:text-6xl font-bold mb-4">
+            Ideas Take Flight with <span class="text-indigo-500">Nest App Studio</span>
+        </h1>
+        <p class="text-lg text-gray-300 max-w-xl mb-8">
+            スマートで洗練されたアプリ開発を、より速く、より簡単に。
+        </p>
+        <div class="flex gap-4">
+            <a href="#contact"
+                class="bg-indigo-600 hover:bg-indigo-700 px-6 py-3 rounded-xl shadow transition">お問い合わせ</a>
+            <a href="#projects"
+                class="border border-white hover:bg-white hover:text-black px-6 py-3 rounded-xl transition">アプリ一覧</a>
+        </div>
+    </section>
+
+    <!-- Services -->
+    <section id="services" class="py-20 bg-gray-800 text-center px-6">
+        <h2 class="text-4xl font-bold mb-12">サービス</h2>
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+            <a href="https://www.youtube.com/channel/UC5aN_i42xg0TmMEbYzKY9Gg">
+                <div class="bg-gray-700 p-6 rounded-xl shadow hover:scale-105 transition">
+                    <h3 class="text-xl font-semibold mb-2">YouTube</h3>
+                    <p class="text-gray-300">旅行動画を中心に様々な動画をアップロードしています「こむぎんTV」</p>
+                </div>
+            </a>
+            <div class="bg-gray-700 p-6 rounded-xl shadow hover:scale-105 transition">
+                <h3 class="text-xl font-semibold mb-2">Webサービス</h3>
+                <p class="text-gray-300">高速でセキュアなWebアプリケーションを構築。</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Projects -->
+    <section id="projects" class="py-20 px-6 bg-gray-900 text-center">
+        <h2 class="text-4xl font-bold mb-12">アプリ一覧</h2>
+        <div class="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            <a href="https://filebridge.web.fc2.com/">
+                <div class="bg-gray-800 p-4 rounded-xl shadow">
+                    <img src="logos/filebridge.PNG" class="mx-auto rounded mb-4" alt="Project 1" width="200" />
+
+                    <h3 class="text-xl font-semibold">FileBridge</h3>
+                    <p class="text-gray-400 text-sm">OSの壁を無視したファイル共有</p>
+                </div>
+            </a>
+
+            <a href="https://listbridge.web.fc2.com/">
+                <div class="bg-gray-800 p-4 rounded-xl shadow">
+                    <img src="logos/listbridge.png" class="mx-auto rounded mb-4" alt="Project 2"
+                        width="200" />
+
+                    <h3 class="text-xl font-semibold">ListBridge</h3>
+                    <p class="text-gray-400 text-sm">リストを簡単に共有　買い物も困らない</p>
+                </div>
+            </a>
+
+            <a href="https://nestcode.web.fc2.com/">
+                <div class="bg-gray-800 p-4 rounded-xl shadow">
+                    <img src="logos/nestcode.JPG" class="mx-auto rounded mb-4" alt="Project 3" width="200" />
+
+                    <h3 class="text-xl font-semibold">Nest Code</h3>
+                    <p class="text-gray-400 text-sm">コード、テキストエディタを共同編集に</p>
+                </div>
+            </a>
+
+            <a href="https://nestplan.web.fc2.com">
+                <div class="bg-gray-800 p-4 rounded-xl shadow">
+                    <img src="logos/nestplan.JPG" class="mx-auto rounded mb-4" alt="Project 4" width="200" />
+
+                    <h3 class="text-xl font-semibold">Nest Plan</h3>
+                    <p class="text-gray-400 text-sm">プロジェクト管理を共同で</p>
+                </div>
+            </a>
+
+            <a href="https://nestpy.web.fc2.com">
+                <div class="bg-gray-800 p-4 rounded-xl shadow">
+                    <img src="logos/Nestpy.png" class="mx-auto rounded mb-4" alt="Project 4" width="200" />
+
+                    <h3 class="text-xl font-semibold">Nest Py</h3>
+                    <p class="text-gray-400 text-sm">Pythonでの開発をサポート もちろん共同編集も</p>
+                </div>
+            </a>
+        </div>
+    </section>
+
+    <!-- Workflow -->
+    <section id="workflow" class="py-20 px-6 bg-gray-900 text-center">
+        <h2 class="text-4xl font-bold mb-12">アプリの設計</h2>
+        <div class="grid md:grid-cols-5 gap-4 max-w-6xl mx-auto text-sm md:text-base">
+            <h3 class="text-xl font-semibold">誰かと</h3>
+            <p class="text-gray-400 text-sm">一人で　ではなく誰かと一緒に行うことで誰かと過ごす大切さを感じることができるように簡単に「共有」や「共同編集」ができるようなアプリを開発しています</p>
+        </div>
+    </section>
+
+    <!-- Team -->
+    <section id="team" class="py-20 px-6 bg-gray-900 text-center">
+        <h2 class="text-4xl font-bold mb-12">チーム紹介</h2>
+        <div class="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            <div class="bg-gray-800 p-6 rounded-xl">
+                <h3 class="text-xl font-semibold">KOMUGIN</h3>
+                <p class="text-gray-400">CTO / フルスタックエンジニア</p>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-xl">
+                <h3 class="text-xl font-semibold">KOMUGIN</h3>
+                <p class="text-gray-400">UI/UX デザイナー</p>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-xl">
+                <h3 class="text-xl font-semibold">KOMUGIN</h3>
+                <p class="text-gray-400">プロジェクトマネージャー</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact -->
+    <section id="contact" class="py-20 bg-gray-800 text-center px-6">
+        <h2 class="text-4xl font-bold mb-8">お問い合わせ</h2>
+        <iframe
+            src="https://docs.google.com/forms/d/e/1FAIpQLScsSFCBXavjo7H0vAnr-p-0GG69udPL-6PsP_jGFH_yIaIZAw/viewform?embedded=true"
+            width="640" height="820" frameborder="0" marginheight="0" marginwidth="0"
+            class="mx-auto rounded-xl shadow-lg">読み込んでいます…</iframe>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-6 bg-gray-900 text-center text-sm text-gray-500">
+        © 2025 Nest App Studio. All rights reserved.
+    </footer>
+
+</body>
+
+</html>
